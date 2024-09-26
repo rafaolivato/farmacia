@@ -1,0 +1,52 @@
+3. Envie uma senha provisória por e-mail:
+Você pode configurar o envio de uma senha provisória para novos operadores usando um sinal (signal) que é disparado quando um novo operador é criado.
+
+No arquivo signals.py:
+
+python
+Copiar código
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.core.mail import send_mail
+from django.contrib.auth.models import User
+from .models import Operador
+import random
+import string
+
+@receiver(post_save, sender=Operador)
+def enviar_senha_provisoria(sender, instance, created, **kwargs):
+    if created:
+        senha_provisoria = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        instance.set_password(senha_provisoria)
+        instance.save()
+
+        send_mail(
+            'Sua conta foi criada',
+            f'Sua senha provisória é: {senha_provisoria}',
+            'from@example.com',
+            [instance.email],
+            fail_silently=False,
+        )
+Você precisará adicionar o sinal ao seu arquivo apps.py ou __init__.py para garantir que ele seja carregado:
+
+python
+Copiar código
+from django.apps import AppConfig
+
+class SeuAppConfig(AppConfig):
+    name = 'seu_app'
+
+    def ready(self):
+        import seu_app.signals
+4. Configuração do envio de e-mails:
+Certifique-se de configurar as credenciais de envio de e-mail no seu arquivo settings.py:
+
+python
+Copiar código
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.seuprovedor.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'seu-email@exemplo.com'
+EMAIL_HOST_PASSWORD = 'sua-senha'
+Com essa configuração, quando você criar um novo operador pelo Django Admin, uma senha provisória será gerada e enviada automaticamente para o e-mail do novo usuário.

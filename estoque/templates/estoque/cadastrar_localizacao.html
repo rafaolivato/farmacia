@@ -1,0 +1,26 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Cadastro de Localização{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Cadastro de Localização</h2>
+    <form method="post" class="form" id="localizacaoForm">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="id_nome" class="form-label">{{ form.nome.label }}</label>
+            <input type="text" name="nome" id="id_nome" class="form-control form-control-dark" placeholder="Digite o nome da localização" value="{{ form.nome.value|default_if_none:'' }}">
+            {% for error in form.nome.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+        
+        
+
+        <button type="submit" class="btn btn-primary">Salvar</button>
+        <a href="{% url 'entrada_estoque' %}" class="btn btn-secondary">Voltar</a>
+        <a href="{% url 'lista_localizacoes' %}" class="btn btn-info">Consultar Localizações</a>
+    </form>
+</div>
+{% endblock %}

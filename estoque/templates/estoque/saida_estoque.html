@@ -1,0 +1,76 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white text-center">
+            <h2 class="mb-0">Saída de Estoque</h2>
+        </div>
+        <div class="card-body">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} mt-3" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" class="needs-validation" novalidate>
+                {% csrf_token %}
+                {{ formset.management_form }}
+                <div id="formset-container">
+                    {% for form in formset %}
+                        <div class="form-row mb-3">
+                            <div class="col-md-4">
+                                {{ form.medicamento.label_tag }} 
+                                {{ form.medicamento }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ form.quantidade.label_tag }} 
+                                {{ form.quantidade }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ form.lote.label_tag }} 
+                                {{ form.lote }}
+                            </div>
+                            <div class="col-md-2 text-center align-self-end">
+                                <button type="button" class="btn btn-danger btn-sm" onclick="removerMedicamento(this)">
+                                    Remover
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary mt-4">Confirmar Retirada</button>
+                </div>
+            </form>
+
+            <div class="text-center mt-3">
+                <button class="btn btn-success" onclick="adicionarMedicamento()">
+                    <i class="fas fa-plus"></i> Adicionar Medicamento
+                </button>
+            </div>
+
+            {% if error %}
+                <div class="alert alert-danger mt-3">
+                    {{ error }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    function adicionarMedicamento() {
+        var formIdx = $('#id_form-TOTAL_FORMS').val();
+        $('#formset-container').append($('#empty-form').html().replace(/__prefix__/g, formIdx));
+        $('#id_form-TOTAL_FORMS').val(parseInt(formIdx) + 1);
+    }
+
+    function removerMedicamento(button) {
+        $(button).closest('.form-row').remove();
+    }
+</script>
+{% endblock %}
