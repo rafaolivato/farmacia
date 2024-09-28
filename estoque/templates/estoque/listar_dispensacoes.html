@@ -1,0 +1,28 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Listar Dispensações{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Listar Dispensações</h2>
+    <a href="{% url 'nova_dispensacao' %}" class="btn btn-primary mb-3">Nova Dispensação</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Paciente</th>
+                <th>Data da Dispensação</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dispensacao in dispensacoes %}
+            <tr>
+                <td>{{ dispensacao.paciente.nome }}</td>
+                <td>{{ dispensacao.data_dispensacao }}</td>
+                <td><a href="{% url 'detalhes_dispensacao' dispensacao.id %}" class="btn btn-info btn-sm">Detalhes</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

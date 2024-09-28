@@ -1,0 +1,23 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Carregar Medicamentos{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4">Carregar Medicamentos a partir de Excel</h1>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="id_excel_file" class="form-label">Arquivo Excel</label>
+            <input type="file" name="excel_file" id="id_excel_file" class="form-control">
+            {% for error in form.excel_file.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Carregar</button>
+        <a href="{% url 'lista_medicamentos' %}" class="btn btn-secondary">Voltar</a>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Novo Medicamento{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4">Novo Medicamento</h1>
+    <form method="post" class="form" id="medicamentoForm">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="id_nome" class="form-label">Nome</label>
+            <input type="text" name="nome" id="id_nome" class="form-control form-control-dark" placeholder="Digite o nome do medicamento" value="{{ form.nome.value|default_if_none:'' }}">
+            {% for error in form.nome.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            <label for="id_nome" class="form-label">Código</label>
+            <input type="text" name="codigo_identificacao" id="id_codigo_identificacao" class="form-control form-control-dark" placeholder="Digite o código Anvisa" value="{{ form.codigo_identificacao.value|default_if_none:'' }}">
+            {% for error in form.nome.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            <label for="id_psicotropico" class="form-label">Psicotrópico</label>
+            <select name="psicotropico" id="id_psicotropico" class="form-control form-control-dark">
+                <option value="">Selecione uma opção</option>
+                {% for value, display in form.psicotropico.field.choices %}
+                    <option value="{{ value }}" {% if form.psicotropico.value == value %}selected{% endif %}>{{ display }}</option>
+                {% endfor %}
+            </select>
+            {% for error in form.psicotropico.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Salvar</button>
+        <a href="{% url 'lista_medicamentos' %}" class="btn btn-secondary">Voltar</a>
+    </form>
+
+    <h2 class="mt-5">Medicamentos Carregados</h2>
+    <ul>
+        {% for medicamento in medicamentos %}
+            <li>{{ medicamento.codigo_identificacao }} - {{ medicamento.nome }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Transferência Bem Sucedida{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Transferência Bem Sucedida</h2>
+    <p>A transferência de medicamentos foi realizada com sucesso.</p>
+    <a href="{% url 'transferencia_sem_requisicao' %}" class="btn btn-primary">Nova Transferência</a>
+</div>
+{% endblock %}

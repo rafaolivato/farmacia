@@ -1,0 +1,127 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Nova Dispensação{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Nova Dispensação</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        {{ formset.management_form }}
+        <h4>Medicamentos</h4>
+        <table class="table table-bordered" id="medicamentos-table">
+            <thead>
+                <tr>
+                    <th>Medicamento</th>
+                    <th>Quantidade</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for form in formset %}
+                <tr class="form-row align-items-center">
+                    <td class="col-md-6">{{ form.medicamento }}</td>
+                    <td class="col-md-3">{{ form.quantidade }}</td>
+                    <td class="col-md-3>">
+                        <button type="button" class="btn btn-danger remove-form-row">Remover</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-secondary" id="add-medicamento">Adicionar Medicamento</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+    </form>
+</div>
+<br>
+<h3>Dispensações Recentes</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Paciente</th>
+            <th>Data de Dispensação</th>
+            <th>Medicamento</th>
+            <th>Quantidade</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for dispensacao in dispensacoes_recentes %}
+            {% for item in dispensacao.medicamentos.all %}
+                <tr>
+                    {% if forloop.first %}
+                        <td rowspan="{{ dispensacao.medicamentos.count }}">{{ dispensacao.paciente.nome }}</td>
+                    {% endif %}
+                    <td>{{ dispensacao.data_dispensacao }}</td>
+                    <td>{{ item.medicamento.nome }}</td>
+                    <td>{{ item.quantidade }}</td>
+                </tr>
+            {% endfor %}
+        {% empty %}
+            <tr>
+                <td colspan="4">Nenhuma dispensação registrada ainda.</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
+<!-- Aqui você insere o script com a lista de medicamentos -->
+<script>
+    /* eslint-disable */
+    const medicamentosDisponiveis = [
+        {% for medicamento in medicamentos_disponiveis %}
+            { id: "{{ medicamento.id }}", nome: "{{ medicamento.nome }}" },
+        {% endfor %}
+    ];
+    /* eslint-disable */
+</script>
+
+<!-- Script existente para adicionar/remover medicamentos -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const formsetPrefix = '{{ formset.prefix }}';
+        const totalFormsInput = document.querySelector(`#id_${formsetPrefix}-TOTAL_FORMS`);
+        const tableBody = document.querySelector('#medicamentos-table tbody');
+        const addMedicamentoButton = document.getElementById('add-medicamento');
+
+        addMedicamentoButton.addEventListener('click', function() {
+            const formCount = parseInt(totalFormsInput.value);
+
+            const medicamentoField = `
+                <select name="${formsetPrefix}-${formCount}-medicamento" class="form-control" id="id_${formsetPrefix}-${formCount}-medicamento">
+                    ${medicamentosDisponiveis.map(med => `<option value="${med.id}">${med.nome}</option>`).join('')}
+                </select>`;
+
+            const newFormHtml = `
+                <tr class="form-row">
+                    <td>${medicamentoField}</td>
+                    <td><input type="number" name="${formsetPrefix}-${formCount}-quantidade" class="form-control" id="id_${formsetPrefix}-${formCount}-quantidade"></td>
+                    <td><button type="button" class="btn btn-danger remove-form-row">Remover</button></td>
+                </tr>`;
+
+            tableBody.insertAdjacentHTML('beforeend', newFormHtml);
+            totalFormsInput.value = formCount + 1;
+        });
+
+        tableBody.addEventListener('click', function(event) {
+            if (event.target.classList.contains('remove-form-row')) {
+                const formRow = event.target.closest('.form-row');
+                formRow.remove();
+                const formRows = document.querySelectorAll('.form-row');
+                totalFormsInput.value = formRows.length;
+                formRows.forEach((row, index) => {
+                    const inputs = row.querySelectorAll('input, select');
+                    inputs.forEach(input => {
+                        const name = input.name.replace(/-\d+-/, `-${index}-`);
+                        const id = input.id.replace(/-\d+-/, `-${index}-`);
+                        input.name = name;
+                        input.id = id;
+                    });
+                });
+            }
+        });
+    });
+</script>
+
+{% endblock %}

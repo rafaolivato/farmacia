@@ -1,0 +1,40 @@
+<!-- templates/estoque/detalhes_dispensacao.html -->
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>Detalhes da Dispensação</h1>
+    <p>Paciente: {{ dispensacao.paciente.nome }}</p>
+    <p>Data da Dispensação: {{ dispensacao.data_dispensacao }}</p>
+
+    <h3>Dispensações Recentes</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Paciente</th>
+                <th>Data de Dispensação</th>
+                <th>Medicamento</th>
+                <th>Quantidade</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dispensacao in dispensacoes_recentes %}
+                {% for item in dispensacao.medicamentos.all %}
+                    <tr>
+                        {% if forloop.first %}
+                            <td rowspan="{{ dispensacao.medicamentos.count }}">{{ dispensacao.paciente.nome }}</td>
+                        {% endif %}
+                        <td>{{ dispensacao.data_dispensacao }}</td>
+                        <td>{{ item.medicamento.nome }}</td>
+                        <td>{{ item.quantidade }}</td>
+                    </tr>
+                {% endfor %}
+            {% empty %}
+                <tr>
+                    <td colspan="4">Nenhuma dispensação registrada ainda.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+{% endblock %}

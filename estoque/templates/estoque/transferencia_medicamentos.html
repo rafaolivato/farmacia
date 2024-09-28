@@ -1,0 +1,15 @@
+{% extends 'estoque/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Transferência de Medicamentos{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Transferência de Medicamentos</h2>
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {{ form|crispy }}
+        <button type="submit" class="btn btn-primary">Transferir</button>
+    </form>
+</div>
+{% endblock %}

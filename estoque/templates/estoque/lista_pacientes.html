@@ -1,0 +1,21 @@
+{% extends 'estoque/base.html' %}
+
+{% block title %}Lista de Pacientes{% endblock %}
+
+{% block content %}
+<h1>Lista de Pacientes</h1>
+<form method="get" action="{% url 'lista_pacientes' %}">
+    <div class="form-group">
+        <input type="text" name="q" class="form-control" placeholder="Pesquisar...">
+    </div>
+    <button type="submit" class="btn btn-primary">Pesquisar</button>
+</form>
+<br>
+<ul class="list-group">
+    {% for paciente in pacientes %}
+    <li class="list-group-item">{{ paciente.nome }} - {{ paciente.cpf }}</li>
+    {% endfor %}
+</ul>
+<br>
+<a href="{% url 'novo_paciente' %}" class="btn btn-success">Novo Paciente</a>
+{% endblock %}
