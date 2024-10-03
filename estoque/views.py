@@ -26,7 +26,7 @@ def lista_medicamentos(request):
         DetalhesMedicamento.objects
         .values('medicamento__nome', 'localizacao', 'validade', 'lote')
         .annotate(total_quantidade=Sum('quantidade'), total_valor=Sum('valor'))
-        .order_by('medicamento__nome')
+        .order_by('medicamento__nome', 'lote')
     )
     
     return render(request, 'estoque/lista_medicamentos.html', {
@@ -304,11 +304,13 @@ def lotes_por_medicamento(request):
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db import transaction
 from datetime import date
 from .forms import SaidaEstoqueForm
 from .models import SaidaEstoque, DetalhesMedicamento
 
 @login_required
+@transaction.atomic
 def saida_estoque(request):
     if request.method == 'POST':
         form = SaidaEstoqueForm(request.POST)
@@ -356,9 +358,9 @@ def saida_estoque(request):
     # Renderiza o template com o formulário
     return render(request, 'estoque/saida_estoque.html', {'form': form})
 
-
-
 def get_lotes(request, medicamento_id):
     lotes = DetalhesMedicamento.objects.filter(medicamento_id=medicamento_id, quantidade__gt=0).values('id', 'lote')
     return JsonResponse({'lotes': list(lotes)})
+
+
 

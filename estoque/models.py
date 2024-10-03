@@ -212,7 +212,7 @@ class Medico(models.Model):
 
 class Dispensacao(models.Model):
     paciente = models.ForeignKey('Paciente', on_delete=models.CASCADE)
-    medico = models.ForeignKey('Medico', on_delete=models.SET_NULL, null=True, blank=True)
+    medico = models.ForeignKey('Medico', on_delete=models.SET_NULL, null=True, blank=True,  verbose_name="Médico")
     outros_prescritores = models.CharField(max_length=255, blank=True, null=True)
     numero_notificacao = models.CharField(max_length=6, blank=True, null=True, verbose_name="Número notificação")
     data_receita = models.DateField(default=timezone.now)
