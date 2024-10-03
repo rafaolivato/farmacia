@@ -31,13 +31,12 @@ urlpatterns = [
     path('dispensacoes/<int:id>/', views.detalhes_dispensacao, name='detalhes_dispensacao'),
     path('carregar_medicamentos_excel/', views.carregar_medicamentos_excel, name='carregar_medicamentos_excel'),
     path('cadastrar_medicamento/', views.cadastrar_medicamento, name='cadastrar_medicamento'),
-    path('saida_estoque/', views.saida_estoque, name='saida_estoque'),
-    path('get_lotes/', get_lotes, name='get_lotes'), 
+    path('get_lotes/<int:medicamento_id>/', get_lotes, name='get_lotes'),
     path('sucesso/',sucesso, name='sucesso'),
     path('accounts/', include('django.contrib.auth.urls')),  
     path('logout/', LogoutView.as_view(next_page='base'), name='logout'),
     path('login/', auth_views.LoginView.as_view(template_name='estoque/login.html', redirect_authenticated_user=True, next_page='base'), name='login'),
-   
+    path('saida_estoque/', saida_estoque, name='saida_estoque'),
 ]
   
 if settings.DEBUG:

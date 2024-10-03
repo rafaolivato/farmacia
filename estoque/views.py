@@ -290,47 +290,8 @@ def detalhes_dispensacao(request, id):
     dispensacao = get_object_or_404(Dispensacao, id=id)
     return render(request, 'estoque/detalhes_dispensacao.html', {'dispensacao': dispensacao})
 
-@login_required
-def saida_estoque(request):
-    SaidaEstoqueFormSet = formset_factory(SaidaEstoqueForm, extra=1)  # Definindo o formset
-    
-    if request.method == 'POST':
-        formset = SaidaEstoqueFormSet(request.POST)  # Formset para múltiplos medicamentos
-        if formset.is_valid():
-            for form in formset:
-                medicamento = form.cleaned_data.get('medicamento')
-                quantidade = form.cleaned_data.get('quantidade')
-                lote = form.cleaned_data.get('lote')
 
-                # Atualizar o estoque do lote selecionado
-                if lote and lote.quantidade >= quantidade:
-                    lote.quantidade -= quantidade
-                    lote.save()
 
-            messages.success(request, 'Saída de estoque realizada com sucesso!')
-            return redirect('sucesso')
-        else:
-            messages.error(request, 'Formulário inválido. Verifique os dados inseridos.')
-    else:
-        formset = SaidaEstoqueFormSet()
-
-    return render(request, 'estoque/saida_estoque.html', {'formset': formset})
-
-@login_required
-def get_lotes(request):
-    medicamento_id = request.GET.get('medicamento_id')
-    if medicamento_id:
-        lotes = DetalhesMedicamento.objects.filter(medicamento_id=medicamento_id).values('id', 'lote')
-        seen_lotes = set()
-        unique_lotes = []
-        
-        for lote in lotes:
-            if lote['lote'] not in seen_lotes:
-                seen_lotes.add(lote['lote'])
-                unique_lotes.append(lote)
-        
-        return JsonResponse({'lotes': unique_lotes})
-    return JsonResponse({'error': 'Medicamento ID não fornecido'}, status=400)
 
 def lotes_por_medicamento(request):
     medicamento_id = request.GET.get('medicamento_id')
@@ -339,3 +300,65 @@ def lotes_por_medicamento(request):
         lotes_list = list(lotes)
         return JsonResponse({'lotes': lotes_list})
     return JsonResponse({'error': 'Medicamento ID não fornecido'}, status=400)
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from datetime import date
+from .forms import SaidaEstoqueForm
+from .models import SaidaEstoque, DetalhesMedicamento
+
+@login_required
+def saida_estoque(request):
+    if request.method == 'POST':
+        form = SaidaEstoqueForm(request.POST)
+        if form.is_valid():
+            # Extração dos dados validados do formulário
+            medicamento = form.cleaned_data['medicamento']
+            quantidade = form.cleaned_data['quantidade']
+            lote = form.cleaned_data['lote']  # Obtem o objeto 'DetalhesMedicamento' selecionado no formulário
+            departamento = form.cleaned_data['departamento']  # Campo selecionado pelo usuário
+
+            # Verificação para garantir que o lote é um objeto válido
+            if not isinstance(lote, DetalhesMedicamento):
+                messages.error(request, 'O lote selecionado não é válido. Por favor, tente novamente.')
+                return redirect('saida_estoque')
+
+            # Verifica se há quantidade suficiente no lote selecionado
+            if lote.quantidade >= quantidade:
+                # Subtrai a quantidade desejada do estoque do lote
+                lote.quantidade -= quantidade
+                lote.save()  # Salva as alterações no estoque do lote
+
+                # Cria o objeto de saída de estoque com os dados fornecidos
+                saida = SaidaEstoque(
+                    operador=request.user.username,
+                    medicamento=medicamento,  # Usa o objeto medicamento selecionado no formulário
+                    lote=lote,  # Lote associado ao medicamento
+                    quantidade=quantidade,
+                    departamento=departamento,  # Usa o departamento selecionado no formulário
+                    data_atendimento=date.today()  # Define a data de atendimento como hoje
+                )
+                saida.save()  # Salva a nova saída no banco de dados
+
+                # Exibe mensagem de sucesso e redireciona para a mesma página para nova retirada
+                messages.success(request, f'Saída de estoque realizada com sucesso! Lote atualizado: {lote.lote} - Quantidade restante: {lote.quantidade}')
+                return redirect('saida_estoque')  # Redireciona para a mesma página para registrar outra saída
+            else:
+                # Caso a quantidade desejada seja maior que a disponível no lote
+                messages.error(request, f'Quantidade insuficiente no lote selecionado ({lote.lote}). Quantidade disponível: {lote.quantidade}')
+        else:
+            messages.error(request, 'Erro ao validar o formulário. Por favor, revise os dados inseridos.')
+    else:
+        # Inicializa um formulário vazio se o método não for POST
+        form = SaidaEstoqueForm()
+
+    # Renderiza o template com o formulário
+    return render(request, 'estoque/saida_estoque.html', {'form': form})
+
+
+
+def get_lotes(request, medicamento_id):
+    lotes = DetalhesMedicamento.objects.filter(medicamento_id=medicamento_id, quantidade__gt=0).values('id', 'lote')
+    return JsonResponse({'lotes': list(lotes)})
+

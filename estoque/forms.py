@@ -236,47 +236,38 @@ DispensacaoMedicamentoFormSet = forms.inlineformset_factory(
 class UploadExcelForm(forms.Form):
     excel_file = forms.FileField(label='Selecione um arquivo Excel')
 
+
 from django import forms
-from .models import DetalhesMedicamento
+from .models import SaidaEstoque, DetalhesMedicamento
 
-
-class SaidaEstoqueForm(forms.Form):
-    # Retorna todos os medicamentos com quantidade > 0, e os medicamentos duplicados são filtrados manualmente no Python
-    medicamento = forms.ModelChoiceField(
-        queryset=DetalhesMedicamento.objects.filter(quantidade__gt=0).order_by('medicamento'),
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
-    quantidade = forms.IntegerField(
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
-    )
-    lote = forms.ModelChoiceField(
-        queryset=DetalhesMedicamento.objects.none(),
-        required=False,
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
-
+class SaidaEstoqueForm(forms.ModelForm):
+    class Meta:
+        model = SaidaEstoque
+        fields = ['departamento','medicamento', 'quantidade', 'lote']
+    
     def __init__(self, *args, **kwargs):
         super(SaidaEstoqueForm, self).__init__(*args, **kwargs)
         
-        # Pegamos os medicamentos disponíveis em estoque
-        medicamentos_com_estoque = DetalhesMedicamento.objects.filter(quantidade__gt=0).order_by('medicamento')
+        self.fields['departamento'].queryset = Departamento.objects.all()
         
-        # Eliminamos os duplicados
-        medicamentos_distintos = {medicamento.medicamento for medicamento in medicamentos_com_estoque}
+        # Inicialmente, o campo `lote` não terá opções, pois será preenchido dinamicamente
+        self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
         
-        # Atualizamos o queryset do campo medicamento
-        self.fields['medicamento'].queryset = DetalhesMedicamento.objects.filter(medicamento__in=medicamentos_distintos)
+        medicamentos_com_estoque = Medicamento.objects.filter(
+            detalhesmedicamento__quantidade__gt=0
+        ).distinct()
+        self.fields['medicamento'].queryset = medicamentos_com_estoque
 
+        # Verifica se já existe um medicamento selecionado para carregar os lotes correspondentes
         if 'medicamento' in self.data:
             try:
                 medicamento_id = int(self.data.get('medicamento'))
-                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(medicamento=medicamento_id)
+                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(medicamento_id=medicamento_id).order_by('lote')
             except (ValueError, TypeError):
-                self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
-        else:
-            self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
-
-
+                pass
+        elif self.instance.pk:
+            # Se o objeto já existir, filtra o lote com base no medicamento do objeto
+            self.fields['lote'].queryset = self.instance.medicamento.detalhesmedicamento_set.order_by('lote')
 
     
 
