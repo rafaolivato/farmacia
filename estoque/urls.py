@@ -37,6 +37,7 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(next_page='base'), name='logout'),
     path('login/', auth_views.LoginView.as_view(template_name='estoque/login.html', redirect_authenticated_user=True, next_page='base'), name='login'),
     path('saida_estoque/', saida_estoque, name='saida_estoque'),
+    path('estoque/dispensacoes/<int:id>/', views.detalhes_dispensacao, name='detalhes_dispensacao'),
 ]
   
 if settings.DEBUG:

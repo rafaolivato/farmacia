@@ -134,21 +134,28 @@ def lista_localizacoes(request):
     localizacoes = Localizacao.objects.all()
     return render(request, 'estoque/lista_localizacoes.html', {'localizacoes': localizacoes})
 
+from django.forms import inlineformset_factory
+
+from django.forms import inlineformset_factory
+
+
 @login_required
 def entrada_estoque(request):
+    DetalhesMedicamentoFormSet = inlineformset_factory(Estoque, DetalhesMedicamento, form=DetalhesMedicamentoForm, extra=1, can_delete=False)
     if request.method == 'POST':
         form = EstoqueForm(request.POST)
-        formset = DetalhesMedicamentoFormSet(request.POST)
-        
-        if form.is_valid() and formset.is_valid():
+        if form.is_valid():
             estoque = form.save()
-            formset.instance = estoque
-            formset.save()
-            messages.success(request, 'Entrada de medicamento registrada com sucesso.')
-            return redirect('entrada_estoque')
+            formset = DetalhesMedicamentoFormSet(request.POST, instance=estoque)
+            if formset.is_valid():
+                formset.save()
+                messages.success(request, 'Entrada de medicamento registrada com sucesso.')
+                return redirect('entrada_estoque')
+            else:
+                print(formset.errors)
+                messages.error(request, 'Erro ao registrar detalhes do medicamento.')
         else:
             print(form.errors)
-            print(formset.errors)
             messages.error(request, 'Erro ao registrar entrada de medicamento.')
     else:
         form = EstoqueForm()
@@ -287,8 +294,13 @@ def nova_dispensacao(request):
     })
 
 def detalhes_dispensacao(request, id):
-    dispensacao = get_object_or_404(Dispensacao, id=id)
-    return render(request, 'estoque/detalhes_dispensacao.html', {'dispensacao': dispensacao})
+    dispensacao = Dispensacao.objects.get(id=id)
+    dispensacoes_recentes = Dispensacao.objects.order_by('-data_dispensacao')[:5]
+    context = {
+        'dispensacao': dispensacao,
+        'dispensacoes_recentes': dispensacoes_recentes,
+    }
+    return render(request, 'estoque/detalhes_dispensacao.html', context)
 
 
 

@@ -114,10 +114,7 @@ class DetalhesMedicamento(models.Model):
     fabricante = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
-        return f'{self.medicamento.nome} - {self.quantidade}'
-
-    def __str__(self):
-        return f'{self.lote} - {self.medicamento.nome}'
+        return f'{self.lote} - {self.medicamento.nome} - {self.quantidade}'
 
 class Funcionalidade(models.Model):
     nome = models.CharField(max_length=100)

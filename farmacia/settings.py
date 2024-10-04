@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'farmacia.middleware.DateInputMiddleware',
 ]
 
 ROOT_URLCONF = 'farmacia.urls'

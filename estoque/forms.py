@@ -114,6 +114,7 @@ class EstoqueForm(forms.ModelForm):
             ),
         }
 
+
 class DetalhesMedicamentoForm(forms.ModelForm):
     localizacao = forms.ModelChoiceField(
         queryset=Localizacao.objects.all(),
