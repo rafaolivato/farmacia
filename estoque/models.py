@@ -65,7 +65,7 @@ class Medicamento(models.Model):
     def save(self, *args, **kwargs):
         super(Medicamento, self).save(*args, **kwargs)
 
-class Estoque(models.Model):
+class EntradaEstoque(models.Model):
     TIPO_MOVIMENTACAO_CHOICES = (
         ("ajuste_estoque", "Ajuste de Estoque"),
         ("doacao", "Doação"),
@@ -104,14 +104,25 @@ class Estoque(models.Model):
         return f"{self.get_tipo_display()} de medicamentos"
 
 class DetalhesMedicamento(models.Model):
-    estoque = models.ForeignKey(Estoque, on_delete=models.CASCADE, related_name='detalhes_medicamentos')
+    estoque = models.ForeignKey(EntradaEstoque, on_delete=models.CASCADE, related_name='detalhes_medicamentos')
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField(default=0)
-    localizacao = models.CharField(max_length=100, blank=True, null=True, verbose_name="Localização")
+    localizacao = models.CharField(max_length=100, blank=True, null=True, verbose_name=u"Localização")
     validade = models.DateField(blank=True, null=True)
     lote = models.CharField(max_length=50, blank=True, null=True)
     valor = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="Valor Unitário")
     fabricante = models.CharField(max_length=100, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        # Verificar se já existe um registro com o mesmo medicamento e lote
+        if not self.pk:  # Se for um novo registro
+            existing_record = DetalhesMedicamento.objects.filter(medicamento=self.medicamento, lote=self.lote).first()
+            if existing_record:
+                # Atualizar o registro existente
+                existing_record.quantidade += self.quantidade
+                existing_record.save()
+                return
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.lote} - {self.medicamento.nome} - {self.quantidade}'

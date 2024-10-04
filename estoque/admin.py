@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import  SaidaEstoque,Departamento,Dispensacao, DispensacaoMedicamento,Medicamento, Estoque, Paciente, Funcionalidade, Fornecedor, DetalhesMedicamento, PerfilOperador, Operador, Estabelecimento, Fabricante
+from .models import  SaidaEstoque,Departamento,Dispensacao, DispensacaoMedicamento,Medicamento, EntradaEstoque, Paciente, Funcionalidade, Fornecedor, DetalhesMedicamento, PerfilOperador, Operador, Estabelecimento, Fabricante
 
 # Defina a classe OperadorAdmin
 class OperadorAdmin(UserAdmin):
@@ -24,7 +24,7 @@ admin.site.register(Operador, OperadorAdmin)
 
 # Registre os outros modelos
 admin.site.register(Medicamento)
-admin.site.register(Estoque)
+admin.site.register(EntradaEstoque)
 admin.site.register(Paciente)
 admin.site.register(Fornecedor)
 admin.site.register(DetalhesMedicamento)

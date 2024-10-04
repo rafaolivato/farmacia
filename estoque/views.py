@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .models import Medicamento,DispensacaoMedicamento, Estoque,Paciente,Fornecedor,DetalhesMedicamento,Localizacao,Fabricante, Estabelecimento, Departamento, SaidaEstoque,Operador, Dispensacao
-from .forms import MedicamentoForm, LoginForm, OperadorForm,PacienteForm,FornecedorForm,EstoqueForm, DetalhesMedicamentoFormSet,DetalhesMedicamentoForm,LocalizacaoForm,FabricanteForm, EstabelecimentoForm, DepartamentoForm,SaidaEstoqueForm, MedicoForm,DispensacaoForm, DispensacaoMedicamentoFormSet
+from .models import Medicamento,DispensacaoMedicamento, EntradaEstoque,Paciente,Fornecedor,DetalhesMedicamento,Localizacao,Fabricante, Estabelecimento, Departamento, SaidaEstoque,Operador, Dispensacao
+from .forms import MedicamentoForm, LoginForm, OperadorForm,PacienteForm,FornecedorForm,EntradaEstoqueForm, DetalhesMedicamentoFormSet,DetalhesMedicamentoForm,LocalizacaoForm,FabricanteForm, EstabelecimentoForm, DepartamentoForm,SaidaEstoqueForm, MedicoForm,DispensacaoForm, DispensacaoMedicamentoFormSet
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import timedelta, date
@@ -134,40 +134,56 @@ def lista_localizacoes(request):
     localizacoes = Localizacao.objects.all()
     return render(request, 'estoque/lista_localizacoes.html', {'localizacoes': localizacoes})
 
-from django.forms import inlineformset_factory
+from django.shortcuts import render, redirect
+from django.forms import modelformset_factory
+from .models import EntradaEstoque, DetalhesMedicamento
+from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
+import logging
+from datetime import datetime
 
-from django.forms import inlineformset_factory
+logger = logging.getLogger(__name__)
 
-
-@login_required
 def entrada_estoque(request):
-    DetalhesMedicamentoFormSet = inlineformset_factory(Estoque, DetalhesMedicamento, form=DetalhesMedicamentoForm, extra=1, can_delete=False)
     if request.method == 'POST':
-        form = EstoqueForm(request.POST)
-        if form.is_valid():
-            estoque = form.save()
-            formset = DetalhesMedicamentoFormSet(request.POST, instance=estoque)
-            if formset.is_valid():
-                formset.save()
-                messages.success(request, 'Entrada de medicamento registrada com sucesso.')
-                return redirect('entrada_estoque')
+        form = EntradaEstoqueForm(request.POST)
+        formset = DetalhesMedicamentoFormSet(request.POST, queryset=DetalhesMedicamento.objects.none())
+        
+        if form.is_valid() and formset.is_valid():
+            entrada_estoque = form.save(commit=False)
+            # Verificar se as datas são strings e convertê-las se necessário
+            if isinstance(form.cleaned_data['data'], str):
+                entrada_estoque.data = datetime.strptime(form.cleaned_data['data'], '%d/%m/%Y').date()
             else:
-                print(formset.errors)
-                messages.error(request, 'Erro ao registrar detalhes do medicamento.')
+                entrada_estoque.data = form.cleaned_data['data']
+            
+            if isinstance(form.cleaned_data['data_recebimento'], str):
+                entrada_estoque.data_recebimento = datetime.strptime(form.cleaned_data['data_recebimento'], '%d/%m/%Y').date()
+            else:
+                entrada_estoque.data_recebimento = form.cleaned_data['data_recebimento']
+            
+            entrada_estoque.save()
+            for form in formset:
+                if form.cleaned_data:
+                    detalhes_medicamento = form.save(commit=False)
+                    detalhes_medicamento.estoque = entrada_estoque
+                    # Verificar se a data de validade é uma string e convertê-la se necessário
+                    if 'validade' in form.cleaned_data and form.cleaned_data['validade']:
+                        if isinstance(form.cleaned_data['validade'], str):
+                            detalhes_medicamento.validade = datetime.strptime(form.cleaned_data['validade'], '%d/%m/%Y').date()
+                        else:
+                            detalhes_medicamento.validade = form.cleaned_data['validade']
+                    detalhes_medicamento.save()
+            return redirect('lista_medicamentos')
         else:
-            print(form.errors)
-            messages.error(request, 'Erro ao registrar entrada de medicamento.')
+            logger.error("Form or formset is not valid")
+            logger.error(f"Form errors: {form.errors}")
+            logger.error(f"Formset errors: {formset.errors}")
     else:
-        form = EstoqueForm()
-        formset = DetalhesMedicamentoFormSet()
+        form = EntradaEstoqueForm()
+        formset = DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none())
+    
+    return render(request, 'estoque/entrada_estoque.html', {'form': form, 'formset': formset})
 
-    fabricantes = Fabricante.objects.all()  # Recuperando todos os fabricantes do banco de dados
-    context = {
-        'form': form,
-        'formset': formset,
-        'fabricantes': fabricantes
-    }
-    return render(request, 'estoque/entrada_estoque.html', context)
 
 @login_required
 def cadastrar_estabelecimento(request):

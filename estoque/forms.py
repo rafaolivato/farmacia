@@ -3,7 +3,7 @@ from datetime import date
 from django import forms
 from .models import (
     Medicamento,
-    Estoque,
+    EntradaEstoque,
     Paciente,
     Fornecedor,
     DetalhesMedicamento,
@@ -68,7 +68,10 @@ class LoginForm(forms.Form):
     operador = forms.CharField(max_length=100)
     senha = forms.CharField(widget=forms.PasswordInput)
     
-class EstoqueForm(forms.ModelForm):
+from django import forms
+from .models import EntradaEstoque, DetalhesMedicamento, Localizacao, Fabricante
+
+class EntradaEstoqueForm(forms.ModelForm):
     valor_total = forms.DecimalField(
         widget=forms.TextInput(
             attrs={
@@ -83,7 +86,7 @@ class EstoqueForm(forms.ModelForm):
     )
 
     class Meta:
-        model = Estoque
+        model = EntradaEstoque
         fields = "__all__"
         widgets = {
             "data": forms.DateInput(
@@ -113,7 +116,6 @@ class EstoqueForm(forms.ModelForm):
                 }
             ),
         }
-
 
 class DetalhesMedicamentoForm(forms.ModelForm):
     localizacao = forms.ModelChoiceField(
@@ -158,7 +160,7 @@ class DetalhesMedicamentoForm(forms.ModelForm):
         }
 
 DetalhesMedicamentoFormSet = inlineformset_factory(
-    Estoque,
+    EntradaEstoque,
     DetalhesMedicamento,
     form=DetalhesMedicamentoForm,
     extra=1,
