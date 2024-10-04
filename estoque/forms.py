@@ -69,6 +69,7 @@ class LoginForm(forms.Form):
     senha = forms.CharField(widget=forms.PasswordInput)
     
 from django import forms
+from django.forms import inlineformset_factory
 from .models import EntradaEstoque, DetalhesMedicamento, Localizacao, Fabricante
 
 class EntradaEstoqueForm(forms.ModelForm):
@@ -128,6 +129,7 @@ class DetalhesMedicamentoForm(forms.ModelForm):
             }
         ),
         required=False,
+        label="Localização"
     )
     fabricante = forms.ModelChoiceField(
         queryset=Fabricante.objects.all(),
@@ -138,6 +140,8 @@ class DetalhesMedicamentoForm(forms.ModelForm):
             }
         ),
         required=False,
+        label="Fabricante"
+       
     )
 
     class Meta:
@@ -164,7 +168,7 @@ DetalhesMedicamentoFormSet = inlineformset_factory(
     DetalhesMedicamento,
     form=DetalhesMedicamentoForm,
     extra=1,
-    can_delete=False,
+    can_delete=True  # Permitir a exclusão de formulários
 )
 
 class EstabelecimentoForm(forms.ModelForm):
