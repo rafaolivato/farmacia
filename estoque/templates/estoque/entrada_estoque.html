@@ -6,32 +6,89 @@
 <h1>Entrada de Estoque</h1>
 <form method="post" id="estoqueForm">
     {% csrf_token %}
-    {{ form.as_p }}
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label for="{{ form.tipo.id_for_label }}">Tipo de Entrada</label>
+            {{ form.tipo }}
+        </div>
+        <div class="form-group col-md-6">
+            <label for="{{ form.data.id_for_label }}">Data Nota Fiscal</label>
+            {{ form.data }}
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label for="{{ form.data_recebimento.id_for_label }}">Data de Recebimento</label>
+            {{ form.data_recebimento }}
+        </div>
+        <div class="form-group col-md-6">
+            <label for="{{ form.fonte_financiamento.id_for_label }}">Fonte de Financiamento</label>
+            {{ form.fonte_financiamento }}
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label for="{{ form.fornecedor_tipo.id_for_label }}">Tipo de Fornecedor</label>
+            {{ form.fornecedor_tipo }}
+        </div>
+        <div class="form-group col-md-6">
+            <label for="{{ form.fornecedor.id_for_label }}">Fornecedor</label>
+            {{ form.fornecedor }}
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label for="{{ form.tipo_documento.id_for_label }}">Tipo de Documento</label>
+            {{ form.tipo_documento }}
+        </div>
+        <div class="form-group col-md-6">
+            <label for="{{ form.numero_documento.id_for_label }}">Número do Documento</label>
+            {{ form.numero_documento }}
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label for="{{ form.valor_total.id_for_label }}">Valor Total</label>
+            {{ form.valor_total }}
+        </div>
+        <div class="form-group col-md-6">
+            <label for="{{ form.observacao.id_for_label }}">Observação</label>
+            {{ form.observacao }}
+        </div>
+    </div>
     <h4>Medicamentos</h4>
-    <table class="table table-bordered" id="medicamentos-table">
-        <thead>
-            <tr>
-                <th>Medicamento</th>
-                <th>Quantidade</th>
-                <th>Validade</th>
-                <th>Localização</th>
-                <th>Fabricante</th>
-                <th>Valor</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for form in formset %}
-            <tr class="form-row align-items-center">
-                <td class="col-md-2">{{ form.medicamento }}</td>
-                <td class="col-md-1">{{ form.quantidade }}</td>
-                <td class="col-md-2">{{ form.validade }}</td>
-                <td class="col-md-2">{{ form.localizacao }}</td>
-                <td class="col-md-2">{{ form.fabricante }}</td>
-                <td class="col-md-1">{{ form.valor }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div id="medicamentos-container">
+        {% for form in formset %}
+        <div class="medicamento-form mb-3">
+            <div class="form-group mb-2">
+                <label for="{{ form.medicamento.id_for_label }}">Medicamento</label>
+                {{ form.medicamento }}
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6 mb-2">
+                    <label for="{{ form.quantidade.id_for_label }}">Quantidade</label>
+                    {{ form.quantidade }}
+                </div>
+                <div class="form-group col-md-6 mb-2">
+                    <label for="{{ form.validade.id_for_label }}">Validade</label>
+                    {{ form.validade }}
+                </div>
+            </div>
+            <div class="form-group mb-2">
+                <label for="{{ form.localizacao.id_for_label }}">Localização</label>
+                {{ form.localizacao }}
+            </div>
+            <div class="form-group mb-2">
+                <label for="{{ form.fabricante.id_for_label }}">Fabricante</label>
+                {{ form.fabricante }}
+            </div>
+            <div class="form-group mb-2">
+                <label for="{{ form.valor.id_for_label }}">Valor</label>
+                {{ form.valor }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
     <button type="button" class="btn btn-secondary" id="add-medicamento">Adicionar Medicamento</button>
     <button type="submit" class="btn btn-primary">Salvar</button>
 </form>
@@ -40,47 +97,55 @@
     document.addEventListener('DOMContentLoaded', function() {
         const formsetPrefix = '{{ formset.prefix }}';
         const totalFormsInput = document.querySelector(`#id_${formsetPrefix}-TOTAL_FORMS`);
-        const tableBody = document.querySelector('#medicamentos-table tbody');
+        const medicamentosContainer = document.querySelector('#medicamentos-container');
         const addMedicamentoButton = document.getElementById('add-medicamento');
 
         addMedicamentoButton.addEventListener('click', function() {
             const formCount = parseInt(totalFormsInput.value);
 
             const newFormHtml = `
-                <tr class="form-row align-items-center">
-                    <td class="col-md-2">
+                <div class="medicamento-form mb-3">
+                    <div class="form-group mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-medicamento">Medicamento</label>
                         <select name="${formsetPrefix}-${formCount}-medicamento" class="form-control" id="id_${formsetPrefix}-${formCount}-medicamento">
                             {% for medicamento in medicamentos_disponiveis %}
                                 <option value="{{ medicamento.id }}">{{ medicamento.nome }}</option>
                             {% endfor %}
                         </select>
-                    </td>
-                    <td class="col-md-1">
-                        <input type="number" name="${formsetPrefix}-${formCount}-quantidade" class="form-control" id="id_${formsetPrefix}-${formCount}-quantidade">
-                    </td>
-                    <td class="col-md-2">
-                        <input type="text" name="${formsetPrefix}-${formCount}-validade" class="form-control" id="id_${formsetPrefix}-${formCount}-validade">
-                    </td>
-                    <td class="col-md-2">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6 mb-2">
+                            <label for="id_${formsetPrefix}-${formCount}-quantidade">Quantidade</label>
+                            <input type="number" name="${formsetPrefix}-${formCount}-quantidade" class="form-control" id="id_${formsetPrefix}-${formCount}-quantidade" placeholder="Quantidade">
+                        </div>
+                        <div class="form-group col-md-6 mb-2">
+                            <label for="id_${formsetPrefix}-${formCount}-validade">Validade</label>
+                            <input type="text" name="${formsetPrefix}-${formCount}-validade" class="form-control" id="id_${formsetPrefix}-${formCount}-validade" placeholder="Validade">
+                        </div>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-localizacao">Localização</label>
                         <select name="${formsetPrefix}-${formCount}-localizacao" class="form-control" id="id_${formsetPrefix}-${formCount}-localizacao">
                             {% for localizacao in localizacoes_disponiveis %}
                                 <option value="{{ localizacao.id }}">{{ localizacao.nome }}</option>
                             {% endfor %}
                         </select>
-                    </td>
-                    <td class="col-md-2">
+                    </div>
+                    <div class="form-group mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-fabricante">Fabricante</label>
                         <select name="${formsetPrefix}-${formCount}-fabricante" class="form-control" id="id_${formsetPrefix}-${formCount}-fabricante">
                             {% for fabricante in fabricantes_disponiveis %}
                                 <option value="{{ fabricante.id }}">{{ fabricante.nome }}</option>
                             {% endfor %}
                         </select>
-                    </td>
-                    <td class="col-md-1">
-                        <input type="text" name="${formsetPrefix}-${formCount}-valor" class="form-control currency-input" id="id_${formsetPrefix}-${formCount}-valor">
-                    </td>
-                </tr>`;
+                    </div>
+                    <div class="form-group mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-valor">Valor</label>
+                        <input type="text" name="${formsetPrefix}-${formCount}-valor" class="form-control currency-input" id="id_${formsetPrefix}-${formCount}-valor" placeholder="Valor">
+                    </div>
+                </div>`;
 
-            tableBody.insertAdjacentHTML('beforeend', newFormHtml);
+            medicamentosContainer.insertAdjacentHTML('beforeend', newFormHtml);
             totalFormsInput.value = formCount + 1;
         });
     });
