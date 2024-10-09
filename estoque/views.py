@@ -406,6 +406,7 @@ from django.db import transaction
 from datetime import date
 from .forms import SaidaEstoqueForm
 from .models import SaidaEstoque, DetalhesMedicamento
+from django.db.models import F
 
 
 @login_required

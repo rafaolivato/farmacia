@@ -113,6 +113,10 @@ footer {
   border-color: #28a745;
 }
 
+.mb-0{
+  color: #ffffff;
+}
+
 .btn-custom:hover {
   background-color: #218838;
   border-color: #1e7e34;
