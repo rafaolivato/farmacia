@@ -13,6 +13,7 @@ body {
   flex-direction: column;
 }
 
+
 /* Navbar */
 .navbar {
   background-color: #007bff; /* Cor de fundo azul */
@@ -320,4 +321,9 @@ h5 {
 
 h6 {
   font-size: 1rem;
+}
+
+.logincolor{
+  color: white;
+ 
 }

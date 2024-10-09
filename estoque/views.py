@@ -408,7 +408,6 @@ from .forms import SaidaEstoqueForm
 from .models import SaidaEstoque, DetalhesMedicamento
 from django.db.models import F
 
-
 @login_required
 @transaction.atomic
 def saida_estoque(request):
@@ -418,19 +417,12 @@ def saida_estoque(request):
             # Extração dos dados validados do formulário
             medicamento = form.cleaned_data["medicamento"]
             quantidade = form.cleaned_data["quantidade"]
-            lote = form.cleaned_data[
-                "lote"
-            ]  # Obtem o objeto 'DetalhesMedicamento' selecionado no formulário
-            departamento = form.cleaned_data[
-                "departamento"
-            ]  # Campo selecionado pelo usuário
+            lote = form.cleaned_data["lote"]  # Obtem o objeto 'DetalhesMedicamento' selecionado no formulário
+            departamento = form.cleaned_data["departamento"]  # Campo selecionado pelo usuário
 
             # Verificação para garantir que o lote é um objeto válido
             if not isinstance(lote, DetalhesMedicamento):
-                messages.error(
-                    request,
-                    "O lote selecionado não é válido. Por favor, tente novamente.",
-                )
+                messages.error(request, "O lote selecionado não é válido. Por favor, tente novamente.")
                 return redirect("saida_estoque")
 
             # Verifica se há quantidade suficiente no lote selecionado
@@ -438,6 +430,9 @@ def saida_estoque(request):
                 # Subtrai a quantidade desejada do estoque do lote
                 lote.quantidade = F("quantidade") - quantidade
                 lote.save()  # Salva as alterações no estoque do lote
+
+                # Atualiza a instância do lote para obter a quantidade atualizada do banco de dados
+                lote.refresh_from_db()
 
                 # Cria o objeto de saída de estoque com os dados fornecidos
                 saida = SaidaEstoque(
@@ -455,9 +450,7 @@ def saida_estoque(request):
                     request,
                     f"Saída de estoque realizada com sucesso! Lote atualizado: {lote.lote} - Quantidade restante: {lote.quantidade}",
                 )
-                return redirect(
-                    "saida_estoque"
-                )  # Redireciona para a mesma página para registrar outra saída
+                return redirect("saida_estoque")  # Redireciona para a mesma página para registrar outra saída
             else:
                 # Caso a quantidade desejada seja maior que a disponível no lote
                 messages.error(
@@ -475,7 +468,6 @@ def saida_estoque(request):
 
     # Renderiza o template com o formulário
     return render(request, "estoque/saida_estoque.html", {"form": form})
-
 
 def get_lotes(request, medicamento_id):
     lotes = DetalhesMedicamento.objects.filter(
