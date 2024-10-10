@@ -68,10 +68,6 @@ class LoginForm(forms.Form):
     operador = forms.CharField(max_length=100)
     senha = forms.CharField(widget=forms.PasswordInput)
     
-from django import forms
-from django.forms import inlineformset_factory
-from .models import EntradaEstoque, DetalhesMedicamento, Localizacao, Fabricante
-
 class EntradaEstoqueForm(forms.ModelForm):
     valor_total = forms.DecimalField(
         widget=forms.TextInput(
@@ -118,6 +114,16 @@ class EntradaEstoqueForm(forms.ModelForm):
             ),
         }
 
+    # Método init para depurar e verificar dados iniciais
+    def __init__(self, *args, **kwargs):
+        super(EntradaEstoqueForm, self).__init__(*args, **kwargs)
+        # Exibir valores iniciais no log para verificação
+        print("EntradaEstoqueForm - Valores Iniciais:", self.initial)
+
+
+from django import forms
+from .models import DetalhesMedicamento, Localizacao, Fabricante
+
 class DetalhesMedicamentoForm(forms.ModelForm):
     localizacao = forms.ModelChoiceField(
         queryset=Localizacao.objects.all(),
@@ -141,7 +147,6 @@ class DetalhesMedicamentoForm(forms.ModelForm):
         ),
         required=False,
         label="Fabricante"
-       
     )
 
     class Meta:
@@ -155,21 +160,39 @@ class DetalhesMedicamentoForm(forms.ModelForm):
                     "class": "form-control form-control-sm",
                 },
             ),
-            "valor": forms.TextInput(
+            "lote": forms.TextInput(
                 attrs={
-                    "placeholder": "0,00",
-                    "class": "form-control form-control-sm currency-input",
+                    "placeholder": "Lote",
+                    "class": "form-control form-control-sm",
+                }
+            ),
+            "valor": forms.NumberInput(
+                attrs={
+                    "placeholder": "0.00",
+                    "class": "form-control form-control-sm",
+                    "step": "0.01",
                 }
             ),
         }
 
+    # Método init para depurar e verificar dados iniciais
+    def __init__(self, *args, **kwargs):
+        super(DetalhesMedicamentoForm, self).__init__(*args, **kwargs)
+        # Exibir valores iniciais no log para verificação
+        print("DetalhesMedicamentoForm - Valores Iniciais:", self.initial)
+
+from django.forms import inlineformset_factory
+from .models import EntradaEstoque, DetalhesMedicamento
+
+# Definição do FormSet para DetalhesMedicamento
 DetalhesMedicamentoFormSet = inlineformset_factory(
     EntradaEstoque,
     DetalhesMedicamento,
-    form=DetalhesMedicamentoForm,
+    form=DetalhesMedicamentoForm,  # Certifique-se de que DetalhesMedicamentoForm está definido antes
     extra=1,
-    can_delete=True  # Permitir a exclusão de formulários
+    can_delete=True
 )
+
 
 class EstabelecimentoForm(forms.ModelForm):
     class Meta:

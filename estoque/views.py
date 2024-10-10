@@ -187,12 +187,32 @@ def lista_localizacoes(request):
 
 from django.shortcuts import render, redirect
 from django.forms import inlineformset_factory
+from django.contrib import messages
 from .models import EntradaEstoque, DetalhesMedicamento
+from .forms import EntradaEstoqueForm, DetalhesMedicamentoForm
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Definir o formset para os detalhes dos medicamentos
+DetalhesMedicamentoFormSet = inlineformset_factory(
+    EntradaEstoque,
+    DetalhesMedicamento,
+    form=DetalhesMedicamentoForm,
+    extra=1,
+    can_delete=True
+)
+
+from django.shortcuts import render, redirect
+from django.forms import inlineformset_factory
+from .models import EntradaEstoque, DetalhesMedicamento, Medicamento, Localizacao, Fabricante
 from .forms import EntradaEstoqueForm, DetalhesMedicamentoForm
 import logging
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+DetalhesMedicamentoFormSet = inlineformset_factory(EntradaEstoque, DetalhesMedicamento, form=DetalhesMedicamentoForm, extra=1)
 
 def entrada_estoque(request):
     if request.method == 'POST':
@@ -201,16 +221,29 @@ def entrada_estoque(request):
         
         if form.is_valid() and formset.is_valid():
             entrada_estoque = form.save(commit=False)
-            # Verificar se as datas são strings e convertê-las se necessário
-            if isinstance(form.cleaned_data['data'], str):
-                entrada_estoque.data = datetime.strptime(form.cleaned_data['data'], '%d/%m/%Y').date()
-            else:
-                entrada_estoque.data = form.cleaned_data['data']
             
-            if isinstance(form.cleaned_data['data_recebimento'], str):
-                entrada_estoque.data_recebimento = datetime.strptime(form.cleaned_data['data_recebimento'], '%d/%m/%Y').date()
-            else:
-                entrada_estoque.data_recebimento = form.cleaned_data['data_recebimento']
+            # Função para validar e converter datas
+            def parse_date(date_str):
+                try:
+                    return datetime.strptime(date_str, '%d/%m/%Y').date()
+                except ValueError as e:
+                    logger.error(f"Erro ao converter data: {e}")
+                    return None
+
+            # Verificar e converter as datas
+            entrada_estoque.data = parse_date(form.cleaned_data['data']) if isinstance(form.cleaned_data['data'], str) else form.cleaned_data['data']
+            entrada_estoque.data_recebimento = parse_date(form.cleaned_data['data_recebimento']) if isinstance(form.cleaned_data['data_recebimento'], str) else form.cleaned_data['data_recebimento']
+            
+            if entrada_estoque.data is None or entrada_estoque.data_recebimento is None:
+                logger.error("Data inválida fornecida")
+                return render(request, 'estoque/entrada_estoque.html', {
+                    'form': form,
+                    'formset': formset,
+                    'medicamentos_disponiveis': Medicamento.objects.all(),
+                    'localizacoes_disponiveis': Localizacao.objects.all(),
+                    'fabricantes_disponiveis': Fabricante.objects.all(),
+                    'error_message': 'Data inválida fornecida. Por favor, corrija e tente novamente.'
+                })
             
             entrada_estoque.save()
             formset.instance = entrada_estoque
@@ -220,11 +253,25 @@ def entrada_estoque(request):
             logger.error("Form or formset is not valid")
             logger.error(f"Form errors: {form.errors}")
             logger.error(f"Formset errors: {formset.errors}")
+            for form in formset:
+                logger.error(f"Formset form errors: {form.errors}")
     else:
         form = EntradaEstoqueForm()
         formset = DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none())
     
-    return render(request, 'estoque/entrada_estoque.html', {'form': form, 'formset': formset})
+    medicamentos_disponiveis = Medicamento.objects.all()
+    localizacoes_disponiveis = Localizacao.objects.all()
+    fabricantes_disponiveis = Fabricante.objects.all()
+    
+    return render(request, 'estoque/entrada_estoque.html', {
+        'form': form,
+        'formset': formset,
+        'medicamentos_disponiveis': medicamentos_disponiveis,
+        'localizacoes_disponiveis': localizacoes_disponiveis,
+        'fabricantes_disponiveis': fabricantes_disponiveis,
+    })
+
+
 @login_required
 def cadastrar_estabelecimento(request):
     if request.method == "POST":

@@ -1,152 +1,133 @@
 {% extends 'estoque/base.html' %}
 
+{% load custom_filters %}
+
 {% block title %}Entrada de Estoque{% endblock %}
 
 {% block content %}
 <h1>Entrada de Estoque</h1>
 <form method="post" id="estoqueForm">
     {% csrf_token %}
-    <div class="form-row">
-        <div class="form-group col-md-6">
-            <label for="{{ form.tipo.id_for_label }}">Tipo de Entrada</label>
-            {{ form.tipo }}
+    {{ form.as_p }}
+    {% if form.errors %}
+        <div class="alert alert-danger">
+            <strong>Erros no formulário:</strong>
+            <ul>
+                {% for field, errors in form.errors.items %}
+                    <li>{{ field }}: {{ errors|join:", " }}</li>
+                {% endfor %}
+            </ul>
         </div>
-        <div class="form-group col-md-6">
-            <label for="{{ form.data.id_for_label }}">Data Nota Fiscal</label>
-            {{ form.data }}
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group col-md-6">
-            <label for="{{ form.data_recebimento.id_for_label }}">Data de Recebimento</label>
-            {{ form.data_recebimento }}
-        </div>
-        <div class="form-group col-md-6">
-            <label for="{{ form.fonte_financiamento.id_for_label }}">Fonte de Financiamento</label>
-            {{ form.fonte_financiamento }}
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group col-md-6">
-            <label for="{{ form.fornecedor_tipo.id_for_label }}">Tipo de Fornecedor</label>
-            {{ form.fornecedor_tipo }}
-        </div>
-        <div class="form-group col-md-6">
-            <label for="{{ form.fornecedor.id_for_label }}">Fornecedor</label>
-            {{ form.fornecedor }}
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group col-md-6">
-            <label for="{{ form.tipo_documento.id_for_label }}">Tipo de Documento</label>
-            {{ form.tipo_documento }}
-        </div>
-        <div class="form-group col-md-6">
-            <label for="{{ form.numero_documento.id_for_label }}">Número do Documento</label>
-            {{ form.numero_documento }}
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group col-md-6">
-            <label for="{{ form.valor_total.id_for_label }}">Valor Total</label>
-            {{ form.valor_total }}
-        </div>
-        <div class="form-group col-md-6">
-            <label for="{{ form.observacao.id_for_label }}">Observação</label>
-            {{ form.observacao }}
-        </div>
-    </div>
+    {% endif %}
     <h4>Medicamentos</h4>
-    <div id="medicamentos-container">
+    {{ formset.management_form }}
+    <div id="formset-container" class="container">
         {% for form in formset %}
-        <div class="medicamento-form mb-3">
-            <div class="form-group mb-2">
-                <label for="{{ form.medicamento.id_for_label }}">Medicamento</label>
-                {{ form.medicamento }}
-            </div>
-            <div class="form-row">
-                <div class="form-group col-md-6 mb-2">
-                    <label for="{{ form.quantidade.id_for_label }}">Quantidade</label>
-                    {{ form.quantidade }}
+            <div class="form-row mb-3">
+                <div class="col-md-6 mb-2">
+                    {{ form.medicamento.label_tag }} {{ form.medicamento|add_class_and_placeholder:"select2," }}
                 </div>
-                <div class="form-group col-md-6 mb-2">
-                    <label for="{{ form.validade.id_for_label }}">Validade</label>
-                    {{ form.validade }}
+                <div class="col-md-6 mb-2">
+                    {{ form.quantidade.label_tag }} {{ form.quantidade }}
+                </div>
+                <div class="col-md-6 mb-2">
+                    {{ form.validade.label_tag }} {{ form.validade }}
+                </div>
+                <div class="col-md-6 mb-2">
+                    {{ form.localizacao.label_tag }} {{ form.localizacao|add_class_and_placeholder:"select2," }}
+                </div>
+                <div class="col-md-6 mb-2">
+                    {{ form.fabricante.label_tag }} {{ form.fabricante|add_class_and_placeholder:"select2," }}
+                </div>
+                <div class="col-md-6 mb-2">
+                    {{ form.lote.label_tag }} {{ form.lote }}
+                </div>
+                <div class="col-md-6 mb-2">
+                    {{ form.valor.label_tag }} {{ form.valor }}
                 </div>
             </div>
-            <div class="form-group mb-2">
-                <label for="{{ form.localizacao.id_for_label }}">Localização</label>
-                {{ form.localizacao }}
-            </div>
-            <div class="form-group mb-2">
-                <label for="{{ form.fabricante.id_for_label }}">Fabricante</label>
-                {{ form.fabricante }}
-            </div>
-            <div class="form-group mb-2">
-                <label for="{{ form.valor.id_for_label }}">Valor</label>
-                {{ form.valor }}
-            </div>
-        </div>
         {% endfor %}
     </div>
+    {% if formset.non_form_errors %}
+        <div class="alert alert-danger">
+            <strong>Erros no formset:</strong>
+            <ul>
+                {% for error in formset.non_form_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
     <button type="button" class="btn btn-secondary" id="add-medicamento">Adicionar Medicamento</button>
     <button type="submit" class="btn btn-primary">Salvar</button>
 </form>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    $(document).ready(function() {
+        // Inicializar Select2 nos campos existentes
+        $('#formset-container .select2').select2();
+
         const formsetPrefix = '{{ formset.prefix }}';
         const totalFormsInput = document.querySelector(`#id_${formsetPrefix}-TOTAL_FORMS`);
-        const medicamentosContainer = document.querySelector('#medicamentos-container');
+        const formsetContainer = document.getElementById('formset-container');
         const addMedicamentoButton = document.getElementById('add-medicamento');
 
         addMedicamentoButton.addEventListener('click', function() {
             const formCount = parseInt(totalFormsInput.value);
 
             const newFormHtml = `
-                <div class="medicamento-form mb-3">
-                    <div class="form-group mb-2">
-                        <label for="id_${formsetPrefix}-${formCount}-medicamento">Medicamento</label>
-                        <select name="${formsetPrefix}-${formCount}-medicamento" class="form-control" id="id_${formsetPrefix}-${formCount}-medicamento">
+                <div class="row mb-3">
+                    <div class="col-md-6 mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-medicamento">Medicamento:</label>
+                        <select name="${formsetPrefix}-${formCount}-medicamento" class="form-control select2" id="id_${formsetPrefix}-${formCount}-medicamento">
                             {% for medicamento in medicamentos_disponiveis %}
                                 <option value="{{ medicamento.id }}">{{ medicamento.nome }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group col-md-6 mb-2">
-                            <label for="id_${formsetPrefix}-${formCount}-quantidade">Quantidade</label>
-                            <input type="number" name="${formsetPrefix}-${formCount}-quantidade" class="form-control" id="id_${formsetPrefix}-${formCount}-quantidade" placeholder="Quantidade">
-                        </div>
-                        <div class="form-group col-md-6 mb-2">
-                            <label for="id_${formsetPrefix}-${formCount}-validade">Validade</label>
-                            <input type="text" name="${formsetPrefix}-${formCount}-validade" class="form-control" id="id_${formsetPrefix}-${formCount}-validade" placeholder="Validade">
-                        </div>
+                    <div class="col-md-6 mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-quantidade">Quantidade:</label>
+                        <input type="number" name="${formsetPrefix}-${formCount}-quantidade" class="form-control" id="id_${formsetPrefix}-${formCount}-quantidade">
                     </div>
-                    <div class="form-group mb-2">
-                        <label for="id_${formsetPrefix}-${formCount}-localizacao">Localização</label>
-                        <select name="${formsetPrefix}-${formCount}-localizacao" class="form-control" id="id_${formsetPrefix}-${formCount}-localizacao">
+                    <div class="col-md-6 mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-validade">Validade:</label>
+                        <input type="text" name="${formsetPrefix}-${formCount}-validade" class="form-control" id="id_${formsetPrefix}-${formCount}-validade">
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-localizacao">Localização:</label>
+                        <select name="${formsetPrefix}-${formCount}-localizacao" class="form-control select2" id="id_${formsetPrefix}-${formCount}-localizacao">
                             {% for localizacao in localizacoes_disponiveis %}
                                 <option value="{{ localizacao.id }}">{{ localizacao.nome }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-group mb-2">
-                        <label for="id_${formsetPrefix}-${formCount}-fabricante">Fabricante</label>
-                        <select name="${formsetPrefix}-${formCount}-fabricante" class="form-control" id="id_${formsetPrefix}-${formCount}-fabricante">
+                    <div class="col-md-6 mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-fabricante">Fabricante:</label>
+                        <select name="${formsetPrefix}-${formCount}-fabricante" class="form-control select2" id="id_${formsetPrefix}-${formCount}-fabricante">
                             {% for fabricante in fabricantes_disponiveis %}
                                 <option value="{{ fabricante.id }}">{{ fabricante.nome }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-group mb-2">
-                        <label for="id_${formsetPrefix}-${formCount}-valor">Valor</label>
-                        <input type="text" name="${formsetPrefix}-${formCount}-valor" class="form-control currency-input" id="id_${formsetPrefix}-${formCount}-valor" placeholder="Valor">
+                    <div class="col-md-6 mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-lote">Lote:</label>
+                        <input type="text" name="${formsetPrefix}-${formCount}-lote" class="form-control" id="id_${formsetPrefix}-${formCount}-lote">
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <label for="id_${formsetPrefix}-${formCount}-valor">Valor Unitário:</label>
+                        <input type="number" name="${formsetPrefix}-${formCount}-valor" class="form-control currency-input" id="id_${formsetPrefix}-${formCount}-valor" step="0.01">
                     </div>
                 </div>`;
 
-            medicamentosContainer.insertAdjacentHTML('beforeend', newFormHtml);
+            formsetContainer.insertAdjacentHTML('beforeend', newFormHtml);
             totalFormsInput.value = formCount + 1;
+
+            // Inicializar Select2 no novo campo de seleção
+            $(`#id_${formsetPrefix}-${formCount}-medicamento`).select2();
+            $(`#id_${formsetPrefix}-${formCount}-localizacao`).select2();
+            $(`#id_${formsetPrefix}-${formCount}-fabricante`).select2();
         });
     });
 </script>
