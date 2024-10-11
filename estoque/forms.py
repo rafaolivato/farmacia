@@ -267,6 +267,8 @@ class UploadExcelForm(forms.Form):
     excel_file = forms.FileField(label='Selecione um arquivo Excel')
 
 
+
+
 from django import forms
 from .models import SaidaEstoque, DetalhesMedicamento
 
@@ -298,14 +300,3 @@ class SaidaEstoqueForm(forms.ModelForm):
         elif self.instance.pk:
             # Se o objeto já existir, filtra o lote com base no medicamento do objeto
             self.fields['lote'].queryset = self.instance.medicamento.detalhesmedicamento_set.order_by('lote')
-
-    
-
-    
-
-
-
-
-
-
-

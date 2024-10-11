@@ -333,6 +333,7 @@ h6 {
 }
 
 /* Estilo para os campos do formset */
+/* Estilo para os campos do formset */
 .form-row {
   display: flex;
   flex-wrap: wrap;
@@ -347,7 +348,7 @@ h6 {
 }
 
 .form-row .col-md-6.mb-2 {
-  margin-bottom: 15px;
+  margin-bottom: 30px;
 }
 
 /* Estilo para o container do formset */
@@ -361,10 +362,45 @@ h6 {
 }
 
 .select2-selection {
-  height: 38px;
-  padding: 6px 12px;
+  height: 38px !important;
+  padding: 6px 12px !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 4px !important;
+  box-sizing: border-box !important;
+  display: flex;
+  align-items: center;
+}
+
+/* Estilo para alinhar rótulos e campos de entrada */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.form-group input,
+.form-group select,
+.select2-selection {
+  width: 100%;
+  padding: 0.75rem;
   border: 1px solid #ced4da;
   border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+/* Ajuste específico para campos de entrada e seleção */
+.form-group input {
+  height: 38px;
+}
+
+.form-group select {
+  height: 38px;
 }
 
 /* Centralizando o conteúdo da página de login */
@@ -377,3 +413,5 @@ h6 {
   border-radius: 8px; /* Adiciona cantos arredondados */
   align-items: center;
 }
+
+

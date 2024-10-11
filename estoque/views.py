@@ -445,6 +445,15 @@ def lotes_por_medicamento(request):
         return JsonResponse({"lotes": lotes_list})
     return JsonResponse({"error": "Medicamento ID não fornecido"}, status=400)
 
+from django.http import JsonResponse
+from .models import DetalhesMedicamento
+
+def get_lotes(request, medicamento_id):
+    lotes = DetalhesMedicamento.objects.filter(
+        medicamento_id=medicamento_id, quantidade__gt=0
+    ).values("id", "lote")
+    return JsonResponse({"lotes": list(lotes)})
+
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -475,8 +484,7 @@ def saida_estoque(request):
             # Verifica se há quantidade suficiente no lote selecionado
             if lote.quantidade >= quantidade:
                 # Subtrai a quantidade desejada do estoque do lote
-                lote.quantidade = F("quantidade") - quantidade
-                lote.save()  # Salva as alterações no estoque do lote
+                DetalhesMedicamento.objects.filter(id=lote.id).update(quantidade=F('quantidade') - quantidade)
 
                 # Atualiza a instância do lote para obter a quantidade atualizada do banco de dados
                 lote.refresh_from_db()
@@ -515,9 +523,3 @@ def saida_estoque(request):
 
     # Renderiza o template com o formulário
     return render(request, "estoque/saida_estoque.html", {"form": form})
-
-def get_lotes(request, medicamento_id):
-    lotes = DetalhesMedicamento.objects.filter(
-        medicamento_id=medicamento_id, quantidade__gt=0
-    ).values("id", "lote")
-    return JsonResponse({"lotes": list(lotes)})
