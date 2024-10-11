@@ -10,7 +10,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: 'Roboto', sans-serif;
-  background-color: #f8f9fa;
+  background-color: #dbdfe4;
   color: #343a40;
   display: flex;
   flex-direction: column;
@@ -27,7 +27,7 @@ body {
 .navbar .nav-link {
   color: #F5DD5D !important; /* Texto branco */
   font-weight: bold; /* Deixa o texto em negrito */
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'Roboto', sans-serif;
 }
 
 .navbar .nav-link:hover {
@@ -251,6 +251,7 @@ footer {
   font-size: 24px;
   color: #1676d7;
   margin-bottom: 20px;
+  
 }
 
 /* Estilos dos campos do formulário */
@@ -327,6 +328,8 @@ h6 {
 
 .logincolor {
   color: white;
+  appearance: center;
+  margin-top: 8px;
 }
 
 /* Estilo para os campos do formset */
