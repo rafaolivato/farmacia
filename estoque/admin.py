@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import  SaidaEstoque,Departamento,Dispensacao, DispensacaoMedicamento,Medicamento, EntradaEstoque, Paciente, Funcionalidade, Fornecedor, DetalhesMedicamento, PerfilOperador, Operador, Estabelecimento, Fabricante
+from .models import  Distribuicao, DistribuicaoMedicamento,SaidaEstoque,Departamento,Dispensacao, DispensacaoMedicamento,Medicamento, EntradaEstoque, Paciente, Funcionalidade, Fornecedor, DetalhesMedicamento, PerfilOperador, Operador, Estabelecimento, Fabricante
 
 # Defina a classe OperadorAdmin
 class OperadorAdmin(UserAdmin):
@@ -19,10 +19,16 @@ class OperadorAdmin(UserAdmin):
         }),
     )
 
-# Registre o modelo Operador com a classe personalizada OperadorAdmin
-admin.site.register(Operador, OperadorAdmin)
 
-# Registre os outros modelos
+class DistribuicaoMedicamentoInline(admin.TabularInline):
+    model = DistribuicaoMedicamento
+    extra = 1
+
+class DistribuicaoAdmin(admin.ModelAdmin):
+    inlines = [DistribuicaoMedicamentoInline]
+    list_display = ('estabelecimento_origem', 'estabelecimento_destino', 'data_atendimento')
+
+admin.site.register(Operador, OperadorAdmin)
 admin.site.register(Medicamento)
 admin.site.register(EntradaEstoque)
 admin.site.register(Paciente)
@@ -34,6 +40,11 @@ admin.site.register(PerfilOperador)
 admin.site.register(Funcionalidade)
 admin.site.register(Departamento)
 admin.site.register(SaidaEstoque)
+admin.site.register(Distribuicao, DistribuicaoAdmin)
+admin.site.register(DistribuicaoMedicamento)
+
+
+
 
 
 

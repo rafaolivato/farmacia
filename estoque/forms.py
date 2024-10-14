@@ -313,13 +313,19 @@ class DistribuicaoForm(forms.ModelForm):
             'estabelecimento_destino': forms.Select(attrs={'class': 'form-select'}),
         }
 
+from django import forms
+from .models import DistribuicaoMedicamento, Medicamento
+
 class DistribuicaoMedicamentoForm(forms.ModelForm):
     class Meta:
         model = DistribuicaoMedicamento
-        fields = ['medicamento', 'quantidade', 'lote', 'validade']
+        fields = ['medicamento', 'quantidade']
         widgets = {
             'medicamento': forms.Select(attrs={'class': 'form-select'}),
             'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
-            'lote': forms.TextInput(attrs={'class': 'form-control'}),
-            'validade': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ordenar medicamentos em ordem alfabética
+        self.fields['medicamento'].queryset = Medicamento.objects.all().order_by('nome')
