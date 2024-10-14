@@ -48,18 +48,26 @@ from django.contrib.auth import authenticate, login
 from django.forms import formset_factory
 
 
+from django.db.models import F, Sum
+from django.utils import timezone
+from datetime import timedelta
+from .models import DetalhesMedicamento
+
 def lista_medicamentos(request):
     # Data atual
     now = timezone.now()
     # Data 3 meses à frente
     now_plus_3_months = (now + timedelta(days=90)).date()
 
-    # Query para obter detalhes dos medicamentos
+    # Query para obter detalhes dos medicamentos com cálculo do valor total
     detalhes_medicamentos = (
         DetalhesMedicamento.objects.values(
             "medicamento__nome", "localizacao", "validade", "lote"
         )
-        .annotate(total_quantidade=Sum("quantidade"), total_valor=Sum("valor"))
+        .annotate(
+            total_quantidade=Sum("quantidade"),
+            total_valor=Sum(F("quantidade") * F("valor"))
+        )
         .order_by("medicamento__nome", "lote")
     )
 
@@ -71,7 +79,6 @@ def lista_medicamentos(request):
             "now_plus_3_months": now_plus_3_months,
         },
     )
-
 
 def lista_pacientes(request):
     pacientes = Paciente.objects.all()
@@ -184,24 +191,6 @@ def lista_localizacoes(request):
         request, "estoque/lista_localizacoes.html", {"localizacoes": localizacoes}
     )
 
-
-from django.shortcuts import render, redirect
-from django.forms import inlineformset_factory
-from django.contrib import messages
-from .models import EntradaEstoque, DetalhesMedicamento
-from .forms import EntradaEstoqueForm, DetalhesMedicamentoForm
-import logging
-
-logger = logging.getLogger(__name__)
-
-# Definir o formset para os detalhes dos medicamentos
-DetalhesMedicamentoFormSet = inlineformset_factory(
-    EntradaEstoque,
-    DetalhesMedicamento,
-    form=DetalhesMedicamentoForm,
-    extra=1,
-    can_delete=True
-)
 
 from django.shortcuts import render, redirect
 from django.forms import inlineformset_factory
@@ -386,7 +375,6 @@ def listar_dispensacoes(request):
         request, "estoque/listar_dispensacoes.html", {"dispensacoes": dispensacoes}
     )
 
-
 @login_required
 def nova_dispensacao(request):
     if request.method == "POST":
@@ -445,15 +433,6 @@ def lotes_por_medicamento(request):
         return JsonResponse({"lotes": lotes_list})
     return JsonResponse({"error": "Medicamento ID não fornecido"}, status=400)
 
-from django.http import JsonResponse
-from .models import DetalhesMedicamento
-
-def get_lotes(request, medicamento_id):
-    lotes = DetalhesMedicamento.objects.filter(
-        medicamento_id=medicamento_id, quantidade__gt=0
-    ).values("id", "lote")
-    return JsonResponse({"lotes": list(lotes)})
-
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -484,7 +463,8 @@ def saida_estoque(request):
             # Verifica se há quantidade suficiente no lote selecionado
             if lote.quantidade >= quantidade:
                 # Subtrai a quantidade desejada do estoque do lote
-                DetalhesMedicamento.objects.filter(id=lote.id).update(quantidade=F('quantidade') - quantidade)
+                lote.quantidade = F("quantidade") - quantidade
+                lote.save()  # Salva as alterações no estoque do lote
 
                 # Atualiza a instância do lote para obter a quantidade atualizada do banco de dados
                 lote.refresh_from_db()
@@ -498,7 +478,7 @@ def saida_estoque(request):
                     departamento=departamento,  # Usa o departamento selecionado no formulário
                     data_atendimento=date.today(),  # Define a data de atendimento como hoje
                 )
-                saida.save()  # Salva a nova saída no banco de dados
+                saida.save()  # Salva a nova saída no banco de dados (UUID gerado automaticamente)
 
                 # Exibe mensagem de sucesso e redireciona para a mesma página para nova retirada
                 messages.success(
@@ -523,3 +503,10 @@ def saida_estoque(request):
 
     # Renderiza o template com o formulário
     return render(request, "estoque/saida_estoque.html", {"form": form})
+
+def get_lotes(request, medicamento_id):
+    lotes = DetalhesMedicamento.objects.filter(
+        medicamento_id=medicamento_id, quantidade__gt=0
+    ).values("id", "lote")
+    return JsonResponse({"lotes": list(lotes)})
+

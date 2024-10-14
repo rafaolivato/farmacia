@@ -255,6 +255,7 @@ class DetalheDispensacao(models.Model):
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField()
 
+import uuid
 from django.db import models, transaction
 from django.db.models import F
 
@@ -264,8 +265,9 @@ class SaidaEstoque(models.Model):
         ("ATENDIDO", "Atendido"),
     )
 
-    numero_saida = models.CharField(max_length=8, unique=True)
-    operador = models.CharField(max_length=100)  
+    # Usaremos um UUID para garantir que o numero_saida seja único e gerado automaticamente
+    numero_saida = models.CharField(max_length=36, unique=True, blank=True)  # Aumentado para suportar o UUID
+    operador = models.CharField(max_length=100)
     observacao = models.TextField(blank=True, null=True, verbose_name="Observação")
     data_atendimento = models.DateField()
     departamento = models.ForeignKey('Departamento', on_delete=models.CASCADE)
@@ -274,24 +276,11 @@ class SaidaEstoque(models.Model):
     lote = models.ForeignKey('DetalhesMedicamento', on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField()
 
-    @transaction.atomic
     def save(self, *args, **kwargs):
-        detalhes_lote = DetalhesMedicamento.objects.select_for_update().get(pk=self.lote.id)
-
-        if detalhes_lote.quantidade < self.quantidade:
-            raise ValueError("A quantidade retirada é maior do que a disponível no lote.")
-
-        # Subtrai a quantidade do estoque do lote selecionado
-        detalhes_lote.quantidade = F('quantidade') - self.quantidade
-        detalhes_lote.save()
-
+        # Gerar o número de saída usando UUID, caso ainda não tenha sido gerado
         if not self.numero_saida:
-            self.numero_saida = self.generate_numero_saida()
-        super().save(*args, **kwargs)
+            self.numero_saida = str(uuid.uuid4())  # Gera um UUID único
+        super(SaidaEstoque, self).save(*args, **kwargs)
 
-    def generate_numero_saida(self):
-        import random
-        return ''.join([str(random.randint(0, 9)) for _ in range(8)])
-    
     def __str__(self):
         return f'Saída {self.numero_saida} - {self.medicamento.nome} - {self.departamento.nome}'
