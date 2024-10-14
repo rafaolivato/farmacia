@@ -300,3 +300,26 @@ class SaidaEstoqueForm(forms.ModelForm):
         elif self.instance.pk:
             # Se o objeto já existir, filtra o lote com base no medicamento do objeto
             self.fields['lote'].queryset = self.instance.medicamento.detalhesmedicamento_set.order_by('lote')
+
+
+from django import forms
+from .models import Distribuicao, DistribuicaoMedicamento, DetalhesMedicamento, Estabelecimento
+
+class DistribuicaoForm(forms.ModelForm):
+    class Meta:
+        model = Distribuicao
+        fields = ['estabelecimento_destino']
+        widgets = {
+            'estabelecimento_destino': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+class DistribuicaoMedicamentoForm(forms.ModelForm):
+    class Meta:
+        model = DistribuicaoMedicamento
+        fields = ['medicamento', 'quantidade', 'lote', 'validade']
+        widgets = {
+            'medicamento': forms.Select(attrs={'class': 'form-select'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
+            'lote': forms.TextInput(attrs={'class': 'form-control'}),
+            'validade': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }

@@ -1,0 +1,37 @@
+{% extends 'estoque/base.html' %}
+{% block content %}
+    <div class="container">
+        <h2>Distribuição Sem Requisição</h2>
+        <form method="POST">
+            {% csrf_token %}
+            {{ distribuicao_form.as_p }}
+            
+            <h4>Medicamentos</h4>
+            {{ medicamento_formset.management_form }}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Medicamento</th>
+                        <th>Quantidade</th>
+                        <th>Lote</th>
+                        <th>Validade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for form in medicamento_formset %}
+                        <tr>
+                            <td>{{ form.medicamento }}</td>
+                            <td>{{ form.quantidade }}</td>
+                            <td>{{ form.lote }}</td>
+                            <td>{{ form.validade }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="{% url 'consultar_distribuicoes' %}" class="btn btn-secondary">Consultar Distribuições</a>
+
+        </form>
+    </div>
+{% endblock %}

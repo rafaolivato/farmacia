@@ -14,7 +14,10 @@ from .models import (
     SaidaEstoque,
     Operador,
     Dispensacao,
+    DistribuicaoMedicamento
 )
+
+
 from .forms import (
     MedicamentoForm,
     LoginForm,
@@ -510,3 +513,39 @@ def get_lotes(request, medicamento_id):
     ).values("id", "lote")
     return JsonResponse({"lotes": list(lotes)})
 
+from django.shortcuts import render, redirect
+from .forms import DistribuicaoForm, DistribuicaoMedicamentoForm
+from django.forms import modelformset_factory
+
+def distribuicao_sem_requisicao(request):
+    DistribuicaoMedicamentoFormSet = modelformset_factory(DistribuicaoMedicamento, form=DistribuicaoMedicamentoForm, extra=3)
+    
+    if request.method == 'POST':
+        distribuicao_form = DistribuicaoForm(request.POST)
+        medicamento_formset = DistribuicaoMedicamentoFormSet(request.POST)
+        
+        if distribuicao_form.is_valid() and medicamento_formset.is_valid():
+            distribuicao = distribuicao_form.save(commit=False)
+            # Define o estabelecimento de origem como o atual (almoxarifado)
+            distribuicao.estabelecimento_origem = Estabelecimento.objects.get(tipo_estabelecimento='Almoxarifado Central')
+            distribuicao.save()
+            
+            medicamentos = medicamento_formset.save(commit=False)
+            for medicamento in medicamentos:
+                medicamento.distribuicao = distribuicao
+                medicamento.save()
+            
+            return redirect('consultar_distribuicoes')  # Redirecionar para uma página de consulta ou sucesso
+    
+    else:
+        distribuicao_form = DistribuicaoForm()
+        medicamento_formset = DistribuicaoMedicamentoFormSet(queryset=DistribuicaoMedicamento.objects.none())
+    
+    return render(request, 'estoque/distribuicao_sem_requisicao.html', {
+        'distribuicao_form': distribuicao_form,
+        'medicamento_formset': medicamento_formset,
+    })
+
+def consultar_distribuicoes(request):
+    # Your logic here
+    return render(request, 'estoque/consultar_distribuicoes.html')

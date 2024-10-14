@@ -284,3 +284,23 @@ class SaidaEstoque(models.Model):
 
     def __str__(self):
         return f'Saída {self.numero_saida} - {self.medicamento.nome} - {self.departamento.nome}'
+
+
+class Distribuicao(models.Model):
+    estabelecimento_origem = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='distribuicoes_origem')
+    estabelecimento_destino = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='distribuicoes_destino')
+    data_atendimento = models.DateField(auto_now_add=True)
+    
+    def __str__(self):
+        return f'{self.estabelecimento_origem} -> {self.estabelecimento_destino} ({self.data_atendimento})'
+
+
+class DistribuicaoMedicamento(models.Model):
+    distribuicao = models.ForeignKey(Distribuicao, on_delete=models.CASCADE, related_name='medicamentos')
+    medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
+    quantidade = models.PositiveIntegerField()
+    lote = models.CharField(max_length=50)
+    validade = models.DateField()
+    
+    def __str__(self):
+        return f'{self.medicamento.nome} ({self.quantidade} unidades)'
