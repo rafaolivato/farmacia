@@ -36,12 +36,30 @@
         document.addEventListener('DOMContentLoaded', function() {
             const addMedicamentoButton = document.getElementById('add-medicamento');
             const medicamentosTable = document.getElementById('medicamentos-table').getElementsByTagName('tbody')[0];
-            const totalFormsInput = document.querySelector('input[name="medicamento_formset-TOTAL_FORMS"]');
+            const totalFormsInput = document.querySelector('input[name="form-TOTAL_FORMS"]');
+
+            if (!addMedicamentoButton) {
+                console.error('Botão de adicionar medicamento não foi encontrado.');
+                return;
+            }
+            if (!medicamentosTable) {
+                console.error('Tabela de medicamentos não foi encontrada.');
+                return;
+            }
+            if (!totalFormsInput) {
+                console.error('Campo TOTAL_FORMS não foi encontrado.');
+                return;
+            }
 
             addMedicamentoButton.addEventListener('click', function() {
                 const formCount = parseInt(totalFormsInput.value);
                 const newFormCount = formCount + 1;
                 const newFormHtml = medicamentosTable.querySelector('.medicamento-form').cloneNode(true);
+
+                if (!newFormHtml) {
+                    console.error('Não foi possível clonar o formulário.');
+                    return;
+                }
 
                 // Atualiza os atributos dos campos do novo formulário
                 newFormHtml.querySelectorAll('input, select').forEach(function(input) {
@@ -52,7 +70,10 @@
                     input.value = ''; // Limpa o valor do campo
                 });
 
+                // Adiciona a nova linha do formulário à tabela
                 medicamentosTable.appendChild(newFormHtml);
+
+                // Atualiza o valor do campo TOTAL_FORMS
                 totalFormsInput.value = newFormCount;
             });
         });

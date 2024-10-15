@@ -329,3 +329,25 @@ class DistribuicaoMedicamentoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Ordenar medicamentos em ordem alfabética
         self.fields['medicamento'].queryset = Medicamento.objects.all().order_by('nome')
+
+
+from django import forms
+from .models import Requisicao, ItemRequisicao, Estabelecimento, Medicamento
+
+class RequisicaoForm(forms.ModelForm):
+    class Meta:
+        model = Requisicao
+        fields = ['estabelecimento_destino']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.filter(tipo_estabelecimento='Almoxarifado Central')
+
+class ItemRequisicaoForm(forms.ModelForm):
+    class Meta:
+        model = ItemRequisicao
+        fields = ['medicamento', 'quantidade']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['medicamento'].queryset = Medicamento.objects.all()

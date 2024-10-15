@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from .views import saida_estoque, get_lotes, sucesso
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
+from .views import nova_requisicao, consultar_requisicoes, atender_requisicao
 
 urlpatterns = [
     path("", views.base, name="base"),
@@ -40,7 +41,9 @@ urlpatterns = [
     path('estoque/dispensacoes/<int:id>/', views.detalhes_dispensacao, name='detalhes_dispensacao'),
     path('distribuicao-sem-requisicao/', views.distribuicao_sem_requisicao, name='distribuicao_sem_requisicao'),
     path('distribuicoes/', views.consultar_distribuicoes, name='consultar_distribuicoes'),
-
+    path('nova_requisicao/', nova_requisicao, name='nova_requisicao'),
+    path('consultar_requisicoes/', consultar_requisicoes, name='consultar_requisicoes'),
+    path('atender_requisicao/<int:requisicao_id>/', atender_requisicao, name='atender_requisicao'),
 ]
   
 if settings.DEBUG:

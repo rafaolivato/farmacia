@@ -1,0 +1,31 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+    <div class="container">
+        <h2>Atender Requisição de Medicamentos</h2>
+        <form method="POST">
+            {% csrf_token %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Medicamento</th>
+                        <th>Quantidade</th>
+                        <th>Lote</th>
+                        <th>Validade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                        <tr>
+                            <td>{{ item.medicamento.nome }}</td>
+                            <td>{{ item.quantidade }}</td>
+                            <td>{{ item.lote }}</td>
+                            <td>{{ item.validade }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="submit" class="btn btn-primary">Atender Requisição</button>
+        </form>
+    </div>
+{% endblock %}

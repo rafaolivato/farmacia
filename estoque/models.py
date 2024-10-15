@@ -304,3 +304,23 @@ class DistribuicaoMedicamento(models.Model):
     
     def __str__(self):
         return f'{self.medicamento.nome} ({self.quantidade} unidades)'
+
+from django.db import models
+from .models import Estabelecimento, Medicamento
+
+class Requisicao(models.Model):
+    estabelecimento_origem = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='requisicoes_origem')
+    estabelecimento_destino = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='requisicoes_destino')
+    data_requisicao = models.DateField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=[('Pendente', 'Pendente'), ('Atendida', 'Atendida')], default='Pendente')
+
+    def __str__(self):
+        return f'Requisição de {self.estabelecimento_origem.nome} para {self.estabelecimento_destino.nome}'
+
+class ItemRequisicao(models.Model):
+    requisicao = models.ForeignKey(Requisicao, on_delete=models.CASCADE, related_name='itens')
+    medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
+    quantidade = models.PositiveIntegerField()
+
+    def __str__(self):
+        return f'{self.quantidade} de {self.medicamento.nome}'

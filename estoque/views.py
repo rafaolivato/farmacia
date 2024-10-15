@@ -14,7 +14,8 @@ from .models import (
     SaidaEstoque,
     Operador,
     Dispensacao,
-    DistribuicaoMedicamento
+    DistribuicaoMedicamento,
+    Requisicao
 )
 
 
@@ -522,7 +523,7 @@ from django.contrib import messages
 
 @transaction.atomic
 def distribuicao_sem_requisicao(request):
-    DistribuicaoMedicamentoFormSet = modelformset_factory(DistribuicaoMedicamento, form=DistribuicaoMedicamentoForm, extra=3)
+    DistribuicaoMedicamentoFormSet = modelformset_factory(DistribuicaoMedicamento, form=DistribuicaoMedicamentoForm, extra=1)
 
     if request.method == 'POST':
         distribuicao_form = DistribuicaoForm(request.POST)
@@ -549,7 +550,7 @@ def distribuicao_sem_requisicao(request):
                     medicamento.medicamento = medicamento_instancia
 
                     # Preenche automaticamente os campos 'lote' e 'validade'
-                    detalhes = DetalhesMedicamento.objects.filter(medicamento=medicamento_instancia, quantidade__gt=0).order_by('validade').first()
+                    detalhes = DetalhesMedicamento.objects.filter(medicamento=medicamento_instancia, quantidade__gt=0).first()
                     if detalhes:
                         medicamento.lote = detalhes.lote
                         medicamento.validade = detalhes.validade
@@ -578,12 +579,12 @@ def distribuicao_sem_requisicao(request):
     else:
         distribuicao_form = DistribuicaoForm()
         medicamento_formset = DistribuicaoMedicamentoFormSet(queryset=DistribuicaoMedicamento.objects.none())
-    
-    # Filtra os medicamentos disponíveis em estoque com quantidade > 0 e ordena pela data de validade
-    medicamentos_disponiveis = DetalhesMedicamento.objects.filter(quantidade__gt=0).order_by('validade')
-    
-    for form in medicamento_formset:
-        form.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_disponiveis.values('medicamento'))
+        
+        # Filtra os medicamentos disponíveis em estoque com quantidade > 0
+        medicamentos_disponiveis = DetalhesMedicamento.objects.filter(quantidade__gt=0).order_by('medicamento__nome')
+        
+        for form in medicamento_formset:
+            form.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_disponiveis.values('medicamento'))
 
     return render(request, 'estoque/distribuicao_sem_requisicao.html', {
         'distribuicao_form': distribuicao_form,
@@ -596,3 +597,76 @@ from .models import Distribuicao
 def consultar_distribuicoes(request):
     distribuicoes = Distribuicao.objects.all().order_by('-data_atendimento')
     return render(request, 'estoque/consultar_distribuicoes.html', {'distribuicoes': distribuicoes})
+
+from django.shortcuts import render, redirect
+from .forms import RequisicaoForm, ItemRequisicaoForm
+from .models import Requisicao, ItemRequisicao
+from django.forms import modelformset_factory
+
+def nova_requisicao(request):
+    ItemRequisicaoFormSet = modelformset_factory(ItemRequisicao, form=ItemRequisicaoForm, extra=1)
+
+    if request.method == 'POST':
+        requisicao_form = RequisicaoForm(request.POST)
+        item_formset = ItemRequisicaoFormSet(request.POST, queryset=ItemRequisicao.objects.none())
+
+        if requisicao_form.is_valid() and item_formset.is_valid():
+            requisicao = requisicao_form.save(commit=False)
+            requisicao.estabelecimento_origem = Estabelecimento.objects.get(nome='UBS Jardim Planalto')  # Ajuste conforme necessário
+            requisicao.save()
+
+            for form in item_formset:
+                item = form.save(commit=False)
+                item.requisicao = requisicao
+                item.save()
+
+            return redirect('consultar_requisicoes')
+    else:
+        requisicao_form = RequisicaoForm()
+        item_formset = ItemRequisicaoFormSet(queryset=ItemRequisicao.objects.none())
+
+    return render(request, 'estoque/nova_requisicao.html', {
+        'requisicao_form': requisicao_form,
+        'item_formset': item_formset,
+    })
+
+from django.shortcuts import render
+from .models import RequisicaoMedicamento
+
+def consultar_requisicoes(request):
+    requisicoes = RequisicaoMedicamento.objects.all()
+    return render(request, 'estoque/consultar_requisicoes.html', {'requisicoes': requisicoes})
+
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Requisicao, ItemRequisicao, DetalhesMedicamento
+from .forms import ItemRequisicaoForm
+
+def atender_requisicao(request, requisicao_id):
+    requisicao = get_object_or_404(Requisicao, id=requisicao_id)
+    itens = requisicao.itens.all()
+
+    if request.method == 'POST':
+        for item in itens:
+            form = ItemRequisicaoForm(request.POST, instance=item)
+            if form.is_valid():
+                item = form.save(commit=False)
+                detalhes = DetalhesMedicamento.objects.filter(medicamento=item.medicamento, quantidade__gt=0).first()
+                if detalhes:
+                    item.lote = detalhes.lote
+                    item.validade = detalhes.validade
+                    if detalhes.quantidade >= item.quantidade:
+                        detalhes.quantidade -= item.quantidade
+                        detalhes.save()
+                        item.save()
+                    else:
+                        messages.error(request, f"Quantidade insuficiente no lote {detalhes.lote} para o medicamento {item.medicamento.nome}.")
+                        return render(request, 'estoque/atender_requisicao.html', {'requisicao': requisicao, 'itens': itens})
+                else:
+                    messages.error(request, f"Medicamento {item.medicamento.nome} não encontrado em estoque.")
+                    return render(request, 'estoque/atender_requisicao.html', {'requisicao': requisicao, 'itens': itens})
+
+        requisicao.status = 'Atendida'
+        requisicao.save()
+        return redirect('consultar_requisicoes')
+
+    return render(request, 'estoque/atender_requisicao.html', {'requisicao': requisicao, 'itens': itens})
