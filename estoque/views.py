@@ -578,17 +578,17 @@ def distribuicao_sem_requisicao(request):
     else:
         distribuicao_form = DistribuicaoForm()
         medicamento_formset = DistribuicaoMedicamentoFormSet(queryset=DistribuicaoMedicamento.objects.none())
-        
-        # Filtra os medicamentos disponíveis em estoque com quantidade > 0
-        medicamentos_disponiveis = DetalhesMedicamento.objects.filter(quantidade__gt=0).order_by('medicamento__nome')
-        
-        for form in medicamento_formset:
-            form.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_disponiveis.values('medicamento'))
+    
+    # Filtra os medicamentos disponíveis em estoque com quantidade > 0 e ordena pela data de validade
+    medicamentos_disponiveis = DetalhesMedicamento.objects.filter(quantidade__gt=0).order_by('validade')
+    
+    for form in medicamento_formset:
+        form.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_disponiveis.values('medicamento'))
 
     return render(request, 'estoque/distribuicao_sem_requisicao.html', {
-        'distribuicao_form': distribuicao_form,
-        'medicamento_formset': medicamento_formset,
-    })
+    'distribuicao_form': distribuicao_form,
+    'medicamento_formset': medicamento_formset,
+})
 
 from django.shortcuts import render
 from .models import Distribuicao
