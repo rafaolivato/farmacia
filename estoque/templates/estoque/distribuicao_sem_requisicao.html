@@ -9,7 +9,7 @@
             
             <h4>Medicamentos</h4>
             {{ medicamento_formset.management_form }}
-            <table class="table">
+            <table class="table" id="medicamentos-table">
                 <thead>
                     <tr>
                         <th>Medicamento</th>
@@ -18,7 +18,7 @@
                 </thead>
                 <tbody>
                     {% for form in medicamento_formset %}
-                        <tr>
+                        <tr class="medicamento-form">
                             <td>{{ form.medicamento }}{% if form.lote.value %} ({{ form.lote.value }}){% endif %}</td>
                             <td>{{ form.quantidade }}</td>
                         </tr>
@@ -26,8 +26,35 @@
                 </tbody>
             </table>
             
+            <button type="button" class="btn btn-secondary" id="add-medicamento">Adicionar Medicamento</button>
             <button type="submit" class="btn btn-primary">Distribuir Medicamentos</button>
             <a href="{% url 'consultar_distribuicoes' %}" class="btn btn-secondary">Consultar Distribuições</a>
         </form>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const addMedicamentoButton = document.getElementById('add-medicamento');
+            const medicamentosTable = document.getElementById('medicamentos-table').getElementsByTagName('tbody')[0];
+            const totalFormsInput = document.querySelector('input[name="medicamento_formset-TOTAL_FORMS"]');
+
+            addMedicamentoButton.addEventListener('click', function() {
+                const formCount = parseInt(totalFormsInput.value);
+                const newFormCount = formCount + 1;
+                const newFormHtml = medicamentosTable.querySelector('.medicamento-form').cloneNode(true);
+
+                // Atualiza os atributos dos campos do novo formulário
+                newFormHtml.querySelectorAll('input, select').forEach(function(input) {
+                    const name = input.getAttribute('name').replace(`-${formCount - 1}-`, `-${formCount}-`);
+                    const id = input.getAttribute('id').replace(`-${formCount - 1}-`, `-${formCount}-`);
+                    input.setAttribute('name', name);
+                    input.setAttribute('id', id);
+                    input.value = ''; // Limpa o valor do campo
+                });
+
+                medicamentosTable.appendChild(newFormHtml);
+                totalFormsInput.value = newFormCount;
+            });
+        });
+    </script>
 {% endblock %}

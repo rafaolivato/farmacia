@@ -549,7 +549,7 @@ def distribuicao_sem_requisicao(request):
                     medicamento.medicamento = medicamento_instancia
 
                     # Preenche automaticamente os campos 'lote' e 'validade'
-                    detalhes = DetalhesMedicamento.objects.filter(medicamento=medicamento_instancia, quantidade__gt=0).first()
+                    detalhes = DetalhesMedicamento.objects.filter(medicamento=medicamento_instancia, quantidade__gt=0).order_by('validade').first()
                     if detalhes:
                         medicamento.lote = detalhes.lote
                         medicamento.validade = detalhes.validade
@@ -586,15 +586,13 @@ def distribuicao_sem_requisicao(request):
         form.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_disponiveis.values('medicamento'))
 
     return render(request, 'estoque/distribuicao_sem_requisicao.html', {
-    'distribuicao_form': distribuicao_form,
-    'medicamento_formset': medicamento_formset,
-})
+        'distribuicao_form': distribuicao_form,
+        'medicamento_formset': medicamento_formset,
+    })
 
 from django.shortcuts import render
 from .models import Distribuicao
 
 def consultar_distribuicoes(request):
-    distribuicoes = Distribuicao.objects.all()
+    distribuicoes = Distribuicao.objects.all().order_by('-data_atendimento')
     return render(request, 'estoque/consultar_distribuicoes.html', {'distribuicoes': distribuicoes})
-
-
