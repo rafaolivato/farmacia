@@ -600,8 +600,9 @@ def consultar_distribuicoes(request):
 
 from django.shortcuts import render, redirect
 from .forms import RequisicaoForm, ItemRequisicaoForm
-from .models import Requisicao, ItemRequisicao
+from .models import Requisicao, ItemRequisicao, Estabelecimento
 from django.forms import modelformset_factory
+from django.contrib import messages
 
 def nova_requisicao(request):
     ItemRequisicaoFormSet = modelformset_factory(ItemRequisicao, form=ItemRequisicaoForm, extra=1)
@@ -620,7 +621,10 @@ def nova_requisicao(request):
                 item.requisicao = requisicao
                 item.save()
 
+            messages.success(request, 'Requisição criada com sucesso.')
             return redirect('consultar_requisicoes')
+        else:
+            messages.error(request, 'Erro ao criar a requisição. Verifique os dados e tente novamente.')
     else:
         requisicao_form = RequisicaoForm()
         item_formset = ItemRequisicaoFormSet(queryset=ItemRequisicao.objects.none())
@@ -631,10 +635,10 @@ def nova_requisicao(request):
     })
 
 from django.shortcuts import render
-from .models import RequisicaoMedicamento
+from .models import Requisicao
 
 def consultar_requisicoes(request):
-    requisicoes = RequisicaoMedicamento.objects.all()
+    requisicoes = Requisicao.objects.all()
     return render(request, 'estoque/consultar_requisicoes.html', {'requisicoes': requisicoes})
 
 from django.shortcuts import render, redirect, get_object_or_404
