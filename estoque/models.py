@@ -127,11 +127,7 @@ class DetalhesMedicamento(models.Model):
     def __str__(self):
         return f'{self.lote} - {self.medicamento.nome} - {self.quantidade}'
 
-class Funcionalidade(models.Model):
-    nome = models.CharField(max_length=100)
 
-    def __str__(self):
-        return self.nome
     
 class Medico(models.Model):
     ESTADOS_CHOICES = [
@@ -287,30 +283,23 @@ class ItemRequisicao(models.Model):
     def __str__(self):
         return f'{self.quantidade} de {self.medicamento.nome}'
     
-class PerfilOperador(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    estabelecimentos = models.ManyToManyField(Estabelecimento, related_name='operadores')
-    funcionalidades = models.ManyToManyField(Funcionalidade, related_name='perfis')
 
-    def __str__(self):
-        return self.user.username
+
 
 class Operador(AbstractUser):
     nome_completo = models.CharField(max_length=255)
     cpf = models.CharField(max_length=14, unique=True)
-    perfil = models.ForeignKey(PerfilOperador, on_delete=models.CASCADE)
     estabelecimentos = models.ManyToManyField(Estabelecimento)
 
-    # Adicionando related_name para evitar conflito
     groups = models.ManyToManyField(
         Group,
-        related_name='operador_set',  # ou outro nome que você preferir
+        related_name='operador_set',
         blank=True,
         help_text="Os grupos aos quais este usuário pertence."
     )
     user_permissions = models.ManyToManyField(
         Permission,
-        related_name='operador_permissions_set',  # ou outro nome que você preferir
+        related_name='operador_permissions_set',
         blank=True,
         help_text="Permissões específicas para este usuário."
     )

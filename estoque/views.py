@@ -320,20 +320,20 @@ def is_admin(user):
     return user.is_staff
 
 
-@user_passes_test(is_admin)
-@login_required
+from django.shortcuts import render, redirect
+from .forms import OperadorForm
+
 def cadastrar_operador(request):
-    if request.method == "POST":
+    if request.method == 'POST':
         form = OperadorForm(request.POST)
         if form.is_valid():
             operador = form.save(commit=False)
             operador.save()
-            form.save_m2m()
-            messages.success(request, "Operador cadastrado com sucesso!")
-            return redirect("cadastrar_operador")
+            form.save_m2m()  # Salva os relacionamentos ManyToMany
+            return redirect('listar_operadores')
     else:
         form = OperadorForm()
-    return render(request, "estoque/cadastrar_operador.html", {"form": form})
+    return render(request, 'estoque/cadastrar_operador.html', {'form': form})
 
 
 def login_view(request):

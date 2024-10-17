@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import  Distribuicao, DistribuicaoMedicamento,SaidaEstoque,Departamento,Dispensacao, DispensacaoMedicamento,Medicamento, EntradaEstoque, Paciente, Funcionalidade, Fornecedor, DetalhesMedicamento, PerfilOperador, Operador, Estabelecimento, Fabricante
+from .models import  Distribuicao, DistribuicaoMedicamento,SaidaEstoque,Departamento,Dispensacao, DispensacaoMedicamento,Medicamento, EntradaEstoque, Paciente, Fornecedor, DetalhesMedicamento, Operador, Estabelecimento, Fabricante
 
 # Defina a classe OperadorAdmin
 class OperadorAdmin(UserAdmin):
@@ -36,17 +36,10 @@ admin.site.register(Fornecedor)
 admin.site.register(DetalhesMedicamento)
 admin.site.register(Fabricante)
 admin.site.register(Estabelecimento)
-admin.site.register(PerfilOperador)
-admin.site.register(Funcionalidade)
 admin.site.register(Departamento)
 admin.site.register(SaidaEstoque)
 admin.site.register(Distribuicao, DistribuicaoAdmin)
 admin.site.register(DistribuicaoMedicamento)
-
-
-
-
-
 
 
 # Crie um Inline para DispensacaoMedicamento

@@ -8,17 +8,25 @@
     <table class="table table-striped">
         <thead>
             <tr>
+                <th>Nome</th>
                 <th>ID</th>
                 <th>Email</th>
-                <!-- Add other fields you want to display -->
+                <td>Estabelecimento</td>
+                
+             
             </tr>
         </thead>
         <tbody>
             {% for operador in operadores %}
             <tr>
+                <td>{{ operador.nome_completo }}</td>
                 <td>{{ operador.id }}</td>
                 <td>{{ operador.email }}</td>
-                <!-- Add other fields you want to display -->
+                <td>
+                    {% for estabelecimento in operador.estabelecimentos.all %}
+                        {{ estabelecimento.nome }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>

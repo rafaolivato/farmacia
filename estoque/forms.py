@@ -17,9 +17,6 @@ from .models import (
     Medico,
     Dispensacao,
     DispensacaoMedicamento,
-    PerfilOperador,
-    Funcionalidade
-    
    
 )
 
@@ -202,17 +199,15 @@ class EstabelecimentoForm(forms.ModelForm):
 
 from django import forms
 from .models import Operador, Estabelecimento
+from .estabelecimento import Estabelecimento
 
 class OperadorForm(forms.ModelForm):
-    funcionalidades = forms.ModelMultipleChoiceField(
-        queryset=Funcionalidade.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        required=True
-    )
-
     class Meta:
         model = Operador
-        fields = ['nome_completo', 'email', 'cpf', 'estabelecimentos' ]
+        fields = ['username', 'nome_completo', 'email', 'cpf', 'estabelecimentos']
+        widgets = {
+            'estabelecimentos': forms.SelectMultiple(attrs={'class': 'select2'}),
+        }
         
 class MedicoForm(forms.ModelForm):
     class Meta:
