@@ -212,8 +212,8 @@ class OperadorForm(forms.ModelForm):
 
     class Meta:
         model = Operador
-        fields = ['nome_completo', 'email', 'cpf', 'perfil', 'estabelecimentos', 'funcionalidades']
-
+        fields = ['nome_completo', 'email', 'cpf', 'estabelecimentos' ]
+        
 class MedicoForm(forms.ModelForm):
     class Meta:
         model = Medico

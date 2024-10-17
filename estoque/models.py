@@ -133,44 +133,6 @@ class Funcionalidade(models.Model):
     def __str__(self):
         return self.nome
     
-class PerfilOperador(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    estabelecimentos = models.ManyToManyField(Estabelecimento, related_name='operadores')
-    funcionalidades = models.ManyToManyField(Funcionalidade, related_name='perfis')
-
-    def __str__(self):
-        return self.user.username
-
-class Operador(AbstractUser):
-    nome_completo = models.CharField(max_length=255)
-    cpf = models.CharField(max_length=14, unique=True)
-    perfil = models.ForeignKey(PerfilOperador, on_delete=models.CASCADE)
-    estabelecimentos = models.ManyToManyField(Estabelecimento)
-    
-    # Adicionando related_name para evitar conflito
-    groups = models.ManyToManyField(
-        Group,
-        related_name='operador_set',  # ou outro nome que você preferir
-        blank=True,
-        help_text="Os grupos aos quais este usuário pertence."
-    )
-    user_permissions = models.ManyToManyField(
-        Permission,
-        related_name='operador_permissions_set',  # ou outro nome que você preferir
-        blank=True,
-        help_text="Permissões específicas para este usuário."
-    )
-
-    username = models.CharField(max_length=150, unique=True, default='default_username')
-    # Definindo um valor padrão para 'password'
-    password = models.CharField(max_length=128, default='senha_padrao')
-
-    def __str__(self):
-        return self.nome_completo
-
-    def has_permission(self, funcionalidade_nome):
-        return self.perfil.funcionalidades.filter(nome=funcionalidade_nome).exists()
-
 class Medico(models.Model):
     ESTADOS_CHOICES = [
         ('AC', 'Acre'),
@@ -324,3 +286,34 @@ class ItemRequisicao(models.Model):
 
     def __str__(self):
         return f'{self.quantidade} de {self.medicamento.nome}'
+    
+class PerfilOperador(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    estabelecimentos = models.ManyToManyField(Estabelecimento, related_name='operadores')
+    funcionalidades = models.ManyToManyField(Funcionalidade, related_name='perfis')
+
+    def __str__(self):
+        return self.user.username
+
+class Operador(AbstractUser):
+    nome_completo = models.CharField(max_length=255)
+    cpf = models.CharField(max_length=14, unique=True)
+    perfil = models.ForeignKey(PerfilOperador, on_delete=models.CASCADE)
+    estabelecimentos = models.ManyToManyField(Estabelecimento)
+
+    # Adicionando related_name para evitar conflito
+    groups = models.ManyToManyField(
+        Group,
+        related_name='operador_set',  # ou outro nome que você preferir
+        blank=True,
+        help_text="Os grupos aos quais este usuário pertence."
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        related_name='operador_permissions_set',  # ou outro nome que você preferir
+        blank=True,
+        help_text="Permissões específicas para este usuário."
+    )
+
+    def __str__(self):
+        return self.nome_completo
