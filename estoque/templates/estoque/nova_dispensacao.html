@@ -5,12 +5,22 @@
 {% block content %}
 <div class="container mt-5">
     <h2 class="mb-4">Nova Dispensação</h2>
-    <form method="post">
+    <form method="post" novalidate>
         {% csrf_token %}
         {{ form.as_p }}
-        {{ formset.management_form }}
-        <button type="button" class="btn btn-secondary" id="generate-notification-number">Gerar Número de Notificação</button>
-        <h4>Medicamentos</h4>
+        {{ formset.management_form }}  <!-- Isso é fundamental para o Django formset funcionar corretamente -->
+       <!-- Campo de Número de Notificação oculto -->
+        <input type="hidden" id="id_numero_notificacao" name="numero_notificacao" class="form-control">
+
+
+
+<!-- Botão para gerar o número e o span para exibi-lo -->
+        <div class="d-flex align-items-center">
+            <button type="button" class="btn btn-secondary" id="generate-notification-number">Gerar Número de Notificação</button>
+            <span class="ml-3" id="notification-number-display"></span>
+        </div>
+
+       
         <table class="table table-bordered" id="medicamentos-table">
             <thead>
                 <tr>
@@ -21,19 +31,22 @@
             </thead>
             <tbody>
                 {% for form in formset %}
-                <tr class="form-row align-items-center">
-                    <td class="col-md-6">{{ form.medicamento }}</td>
-                    <td class="col-md-3">{{ form.quantidade }}</td>
-                    <td class="col-md-3">
+                <tr class="align-items-center">
+                    <td>{{ form.medicamento }}</td>
+                    <td>{{ form.quantidade }}</td>
+                    <td>
                         <button type="button" class="btn btn-danger remove-form-row">Remover</button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <button type="button" class="btn btn-secondary" id="add-medicamento">Adicionar Medicamento</button>
+        <button type="button" class="btn btn-primary" id="add-medicamento">Adicionar Medicamento</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
     </form>
+    
+           
+     
 </div>
 <br>
 <h3>Dispensações Recentes</h3>
@@ -66,50 +79,77 @@
     </tbody>
 </table>
 
-<!-- Aqui você insere o script com a lista de medicamentos -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    /* eslint-disable */
-    const medicamentosDisponiveis = [
-        {% for medicamento in medicamentos_disponiveis %}
-            { id: "{{ medicamento.id }}", nome: "{{ medicamento.nome }}" },
-        {% endfor %}
-    ];
-    /* eslint-disable */
-</script>
+    function formatDateToISO(dateStr) {
+        const [day, month, year] = dateStr.split('/');
+        return `${year}-${month}-${day}`;
+    }
 
-<!-- Script existente para adicionar/remover medicamentos -->
-<script>
     document.addEventListener('DOMContentLoaded', function() {
-        const formsetPrefix = '{{ formset.prefix }}';
-        const totalFormsInput = document.querySelector(`#id_${formsetPrefix}-TOTAL_FORMS`);
-        const tableBody = document.querySelector('#medicamentos-table tbody');
+        const generateNotificationButton = document.getElementById('generate-notification-number');
+        const notificationNumberField = document.getElementById('id_numero_notificacao');
+        const notificationDisplay = document.getElementById('notification-number-display');
+    
+        if (generateNotificationButton) {
+            generateNotificationButton.addEventListener('click', function() {
+                // Gera um número aleatório de 6 dígitos
+                const randomNumber = Math.floor(100000 + Math.random() * 900000);
+    
+                // Atualiza o campo oculto com o número gerado
+                notificationNumberField.value = randomNumber;
+    
+                // Exibe o número gerado no span
+                notificationDisplay.textContent = `Número: ${randomNumber}`;
+            });
+        }
+    });
+    
+
+    document.addEventListener('DOMContentLoaded', function() {
         const addMedicamentoButton = document.getElementById('add-medicamento');
-
+        const tableBody = document.querySelector('#medicamentos-table tbody');
+        const formsetPrefix = '{{ formset.prefix }}';  // Prefixo do formset gerado dinamicamente
+        const totalFormsInput = document.querySelector(`#id_${formsetPrefix}-TOTAL_FORMS`);
+    
+        // Função para adicionar um novo medicamento
         addMedicamentoButton.addEventListener('click', function() {
-            const formCount = parseInt(totalFormsInput.value);
-
+            const formCount = parseInt(totalFormsInput.value);  // Conta quantos formulários já existem
+    
+            // Cria um novo bloco de formulário com os campos "medicamento" e "quantidade"
             const medicamentoField = `
                 <select name="${formsetPrefix}-${formCount}-medicamento" class="form-control" id="id_${formsetPrefix}-${formCount}-medicamento">
-                    ${medicamentosDisponiveis.map(med => `<option value="${med.id}">${med.nome}</option>`).join('')}
+                    {% for medicamento in medicamentos_disponiveis %}
+                        <option value="{{ medicamento.id }}">{{ medicamento.nome }}</option>
+                    {% endfor %}
                 </select>`;
-
+    
             const newFormHtml = `
                 <tr class="form-row align-items-center">
-                    <td class="col-md-6">${medicamentoField}</td>
-                    <td class="col-md-3"><input type="number" name="${formsetPrefix}-${formCount}-quantidade" class="form-control" id="id_${formsetPrefix}-${formCount}-quantidade"></td>
-                    <td class="col-md-3"><button type="button" class="btn btn-danger remove-form-row">Remover</button></td>
+                    <td>${medicamentoField}</td>
+                    <td><input type="number" name="${formsetPrefix}-${formCount}-quantidade" class="form-control" id="id_${formsetPrefix}-${formCount}-quantidade"></td>
+                    <td><button type="button" class="btn btn-danger remove-form-row">Remover</button></td>
                 </tr>`;
-
+    
+            // Adiciona o novo formulário ao corpo da tabela
             tableBody.insertAdjacentHTML('beforeend', newFormHtml);
+    
+            // Incrementa o número total de formulários no formset
             totalFormsInput.value = formCount + 1;
         });
-
+    
+        // Função para remover um medicamento
         tableBody.addEventListener('click', function(event) {
             if (event.target.classList.contains('remove-form-row')) {
                 const formRow = event.target.closest('.form-row');
                 formRow.remove();
+    
+                // Atualiza o número total de formulários após remover
                 const formRows = document.querySelectorAll('.form-row');
                 totalFormsInput.value = formRows.length;
+    
+                // Reajusta os índices dos campos para garantir que sejam enviados corretamente
                 formRows.forEach((row, index) => {
                     const inputs = row.querySelectorAll('input, select');
                     inputs.forEach(input => {
@@ -121,15 +161,8 @@
                 });
             }
         });
-
-        // Script para gerar número de notificação
-        const generateNotificationButton = document.getElementById('generate-notification-number');
-        generateNotificationButton.addEventListener('click', function() {
-            const notificationNumberField = document.getElementById('id_numero_notificacao');
-            const randomNumber = Math.floor(100000 + Math.random() * 900000); // Gera um número aleatório de 6 dígitos
-            notificationNumberField.value = randomNumber;
-        });
     });
+    
+    
 </script>
-
 {% endblock %}

@@ -419,3 +419,28 @@ h6 {
   background-color: #0978ee; /* Cor de fundo ao passar o mouse */
   color: #fcfdfd; /* Cor do texto ao passar o mouse */
 }
+
+
+#medicamentos-table .align-items-center td {
+  vertical-align: middle;
+}
+
+.select-full-width {
+  width: 100%;
+  min-height: 45px; /* Ajuste o valor conforme necessário */
+  max-width: 100%;
+}
+
+
+.d-flex {
+  display: flex;
+  align-items: center;  /* Alinha verticalmente no centro */
+}
+
+.mr-2 {
+  margin-right: 10px;  /* Pequeno espaçamento entre os elementos */
+}
+
+#numero_notificacao_label {
+  width: 150px;  /* Ajuste o tamanho do campo de exibição conforme necessário */
+}

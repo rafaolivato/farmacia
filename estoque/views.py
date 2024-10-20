@@ -381,7 +381,7 @@ def listar_dispensacoes(request):
 
 @login_required
 def nova_dispensacao(request):
-    if request.method == "POST":
+    if request.method == 'POST':
         form = DispensacaoForm(request.POST)
         formset = DispensacaoMedicamentoFormSet(request.POST)
         if form.is_valid() and formset.is_valid():
@@ -390,55 +390,42 @@ def nova_dispensacao(request):
             for medicamento in medicamentos:
                 medicamento.dispensacao = dispensacao
                 medicamento.save()
-            messages.success(request, "Dispensação registrada com sucesso!")
-            return redirect("listar_dispensacoes")
+            messages.success(request, 'Dispensação registrada com sucesso!')
+            return redirect('listar_dispensacoes')
     else:
-        medicamentos_com_estoque = Medicamento.objects.filter(
-            detalhesmedicamento__quantidade__gt=0
-        ).distinct()
-
+        medicamentos_com_estoque = Medicamento.objects.filter(detalhesmedicamento__quantidade__gt=0).distinct()
+    
     form = DispensacaoForm()
-    formset = DispensacaoMedicamentoFormSet(
-        queryset=DispensacaoMedicamento.objects.none()
-    )
-
+    formset = DispensacaoMedicamentoFormSet(queryset=DispensacaoMedicamento.objects.none())
+    
     # Obter dispensações recentes
-    dispensacoes_recentes = Dispensacao.objects.all().order_by("-data_dispensacao")[:3]
+    dispensacoes_recentes = Dispensacao.objects.all().order_by('-data_dispensacao')[:3]
 
-    return render(
-        request,
-        "estoque/nova_dispensacao.html",
-        {
-            "form": form,
-            "formset": formset,
-            "medicamentos_disponiveis": medicamentos_com_estoque,
-            "dispensacoes_recentes": dispensacoes_recentes,
-        },
-    )
-
+    return render(request, 'estoque/nova_dispensacao.html', {
+        'form': form,
+        'formset': formset,
+        'medicamentos_disponiveis': medicamentos_com_estoque,
+        'dispensacoes_recentes': dispensacoes_recentes,
+    })
 
 def detalhes_dispensacao(request, id):
     dispensacao = Dispensacao.objects.get(id=id)
-    dispensacoes_recentes = Dispensacao.objects.order_by("-data_dispensacao")[:5]
+    dispensacoes_recentes = Dispensacao.objects.order_by('-data_dispensacao')[:5]
     context = {
-        "dispensacao": dispensacao,
-        "dispensacoes_recentes": dispensacoes_recentes,
+        'dispensacao': dispensacao,
+        'dispensacoes_recentes': dispensacoes_recentes,
     }
-    return render(request, "estoque/detalhes_dispensacao.html", context)
+    return render(request, 'estoque/detalhes_dispensacao.html', context)
 
 
 def lotes_por_medicamento(request):
-    medicamento_id = request.GET.get("medicamento_id")
+    medicamento_id = request.GET.get('medicamento_id')
     if medicamento_id:
-        lotes = DetalhesMedicamento.objects.filter(
-            medicamento_id=medicamento_id
-        ).values("id", "lote")
+        lotes = DetalhesMedicamento.objects.filter(medicamento_id=medicamento_id).values('id', 'lote')
         lotes_list = list(lotes)
-        return JsonResponse({"lotes": lotes_list})
-    return JsonResponse({"error": "Medicamento ID não fornecido"}, status=400)
+        return JsonResponse({'lotes': lotes_list})
+    return JsonResponse({'error': 'Medicamento ID não fornecido'}, status=400)
 
-
-from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction

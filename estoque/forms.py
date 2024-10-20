@@ -224,12 +224,13 @@ class DispensacaoForm(forms.ModelForm):
         model = Dispensacao
         fields = ['paciente', 'medico', 'outros_prescritores', 'numero_notificacao', 'data_receita']
         widgets = {
-            'paciente': forms.Select(attrs={'class': 'form-control'}),
-            'medico': forms.Select(attrs={'class': 'form-control'}),
+            'paciente': forms.Select(attrs={'class': 'form-control select-full-width'}),
+            'medico': forms.Select(attrs={'class': 'form-control select-full-width'}),
             'outros_prescritores': forms.TextInput(attrs={'class': 'form-control'}),
-            'numero_notificacao': forms.TextInput(attrs={'class': 'form-control'}),
+            'numero_notificacao': forms.TextInput(attrs={'type': 'hidden'}), 
             'data_receita': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
+
 
 class DispensacaoMedicamentoForm(forms.ModelForm):
     class Meta:

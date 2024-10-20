@@ -213,6 +213,7 @@ class DetalheDispensacao(models.Model):
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField()
 
+
 import uuid
 from django.db import models, transaction
 from django.db.models import F
