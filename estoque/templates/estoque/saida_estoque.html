@@ -84,7 +84,7 @@
 
             // Faz a requisição para obter os lotes correspondentes ao medicamento
             $.ajax({
-                url: `/estoque/get_lotes/${medicamentoId}/`,
+                url: `/get_lotes/${medicamentoId}/`,
                 type: 'GET',
                 dataType: 'json',
                 success: function(data) {
@@ -94,7 +94,7 @@
 
                     // Itera sobre os lotes retornados e adiciona ao select
                     $.each(data.lotes, function(index, lote) {
-                        let option = new Option(lote.lote, lote.id);
+                        let option = new Option(`${lote.lote} - ${lote.quantidade} unidades`, lote.id);
                         loteSelect.append(option);
                     });
 
