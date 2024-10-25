@@ -261,16 +261,13 @@ DispensacaoMedicamentoFormSet = forms.inlineformset_factory(
 class UploadExcelForm(forms.Form):
     excel_file = forms.FileField(label='Selecione um arquivo Excel')
 
-
-
-
 from django import forms
-from .models import SaidaEstoque, DetalhesMedicamento
+from .models import SaidaEstoque, DetalhesMedicamento, Departamento, Medicamento
 
 class SaidaEstoqueForm(forms.ModelForm):
     class Meta:
         model = SaidaEstoque
-        fields = ['departamento','medicamento', 'quantidade', 'lote']
+        fields = ['departamento', 'medicamento', 'quantidade', 'lote']
     
     def __init__(self, *args, **kwargs):
         super(SaidaEstoqueForm, self).__init__(*args, **kwargs)
@@ -289,12 +286,12 @@ class SaidaEstoqueForm(forms.ModelForm):
         if 'medicamento' in self.data:
             try:
                 medicamento_id = int(self.data.get('medicamento'))
-                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(medicamento_id=medicamento_id).order_by('lote')
+                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(medicamento_id=medicamento_id, quantidade__gt=0).order_by('lote')
             except (ValueError, TypeError):
                 pass
         elif self.instance.pk:
             # Se o objeto já existir, filtra o lote com base no medicamento do objeto
-            self.fields['lote'].queryset = self.instance.medicamento.detalhesmedicamento_set.order_by('lote')
+            self.fields['lote'].queryset = self.instance.medicamento.detalhesmedicamento_set.filter(quantidade__gt=0).order_by('lote')
 
 
 from django import forms

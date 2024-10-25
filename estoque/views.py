@@ -427,11 +427,14 @@ def detalhes_dispensacao(request, id):
     return render(request, "estoque/detalhes_dispensacao.html", context)
 
 
+from django.http import JsonResponse
+from .models import DetalhesMedicamento
+
 def lotes_por_medicamento(request):
     medicamento_id = request.GET.get("medicamento_id")
     if medicamento_id:
         lotes = DetalhesMedicamento.objects.filter(
-            medicamento_id=medicamento_id
+            medicamento_id=medicamento_id, quantidade__gt=0
         ).values("id", "lote")
         lotes_list = list(lotes)
         return JsonResponse({"lotes": lotes_list})
@@ -508,11 +511,15 @@ def saida_estoque(request):
     # Renderiza o template com o formulário
     return render(request, "estoque/saida_estoque.html", {"form": form})
 
+from django.http import JsonResponse
+from .models import DetalhesMedicamento
+
 def get_lotes(request, medicamento_id):
     lotes = DetalhesMedicamento.objects.filter(
         medicamento_id=medicamento_id, quantidade__gt=0
     ).values("id", "lote")
     return JsonResponse({"lotes": list(lotes)})
+
 
 from django.shortcuts import render, redirect
 from .forms import DistribuicaoForm, DistribuicaoMedicamentoForm
