@@ -66,7 +66,7 @@ def lista_medicamentos(request):
     # Query para obter detalhes dos medicamentos com cálculo do valor total
     detalhes_medicamentos = (
         DetalhesMedicamento.objects.values(
-            "medicamento__nome", "localizacao", "validade", "lote"
+            "medicamento__id", "medicamento__nome", "localizacao", "validade", "lote"
         )
         .annotate(
             total_quantidade=Sum("quantidade"),
@@ -426,29 +426,35 @@ def detalhes_dispensacao(request, id):
     }
     return render(request, "estoque/detalhes_dispensacao.html", context)
 
-
 from django.http import JsonResponse
 from .models import DetalhesMedicamento
 
-def lotes_por_medicamento(request):
-    medicamento_id = request.GET.get("medicamento_id")
-    if medicamento_id:
-        lotes = DetalhesMedicamento.objects.filter(
-            medicamento_id=medicamento_id, quantidade__gt=0
-        ).values("id", "lote")
-        lotes_list = list(lotes)
-        return JsonResponse({"lotes": lotes_list})
-    return JsonResponse({"error": "Medicamento ID não fornecido"}, status=400)
+def lotes_por_medicamento(request, medicamento_id):
+    
+    if request.method == 'GET':
+        try:
+            # Use a query mais concisa e clara
+            lotes = DetalhesMedicamento.objects.filter(medicamento__id=medicamento_id).values('id', 'lote', 'quantidade')
+            
+            if lotes:
+                return JsonResponse({'lotes': list(lotes)})
+            else:
+                return JsonResponse({'error': 'Nenhum lote encontrado para o medicamento informado'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Invalid request method'}, status=400)
 
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
 from django.db import transaction
-from datetime import date
+from django.contrib import messages
+from django.http import JsonResponse
+from .models import DetalhesMedicamento, SaidaEstoque, Medicamento, Departamento
 from .forms import SaidaEstoqueForm
-from .models import SaidaEstoque, DetalhesMedicamento
+from datetime import date
 from django.db.models import F
+
 
 @login_required
 @transaction.atomic
@@ -462,10 +468,12 @@ def saida_estoque(request):
             lote = form.cleaned_data["lote"]  # Obtem o objeto 'DetalhesMedicamento' selecionado no formulário
             departamento = form.cleaned_data["departamento"]  # Campo selecionado pelo usuário
 
+
             # Verificação para garantir que o lote é um objeto válido
             if not isinstance(lote, DetalhesMedicamento):
                 messages.error(request, "O lote selecionado não é válido. Por favor, tente novamente.")
                 return redirect("saida_estoque")
+
 
             # Verifica se há quantidade suficiente no lote selecionado
             if lote.quantidade >= quantidade:
@@ -473,8 +481,10 @@ def saida_estoque(request):
                 lote.quantidade = F("quantidade") - quantidade
                 lote.save()  # Salva as alterações no estoque do lote
 
+
                 # Atualiza a instância do lote para obter a quantidade atualizada do banco de dados
                 lote.refresh_from_db()
+
 
                 # Cria o objeto de saída de estoque com os dados fornecidos
                 saida = SaidaEstoque(
@@ -486,6 +496,7 @@ def saida_estoque(request):
                     data_atendimento=date.today(),  # Define a data de atendimento como hoje
                 )
                 saida.save()  # Salva a nova saída no banco de dados (UUID gerado automaticamente)
+
 
                 # Exibe mensagem de sucesso e redireciona para a mesma página para nova retirada
                 messages.success(
@@ -508,8 +519,10 @@ def saida_estoque(request):
         # Inicializa um formulário vazio se o método não for POST
         form = SaidaEstoqueForm()
 
+
     # Renderiza o template com o formulário
     return render(request, "estoque/saida_estoque.html", {"form": form})
+
 
 from django.http import JsonResponse
 from .models import DetalhesMedicamento
@@ -681,3 +694,115 @@ def atender_requisicao(request, requisicao_id):
         return redirect('consultar_requisicoes')
 
     return render(request, 'estoque/atender_requisicao.html', {'requisicao': requisicao, 'itens': itens})
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from .models import Requisicao
+
+@login_required
+def aprovar_requisicao(request, requisicao_id):
+    requisicao = get_object_or_404(Requisicao, id=requisicao_id)
+
+    if requisicao.status != 'Pendente':
+        messages.error(request, "Esta requisição já foi processada.")
+        return redirect('detalhe_requisicao', pk=requisicao_id)  # Aqui você deve usar 'pk' se essa é a chave definida na URL
+
+    requisicao.aprovar(usuario=request.user)
+    messages.success(request, "Requisição aprovada com sucesso.")
+    return redirect('detalhe_requisicao', pk=requisicao_id)  # Mudança aqui também
+
+@login_required
+def rejeitar_requisicao(request, requisicao_id):
+    requisicao = get_object_or_404(Requisicao, id=requisicao_id)
+
+    if requisicao.status != 'Pendente':
+        messages.error(request, "Esta requisição já foi processada.")
+        return redirect('detalhe_requisicao', pk=requisicao_id)  # Aqui você deve usar 'pk' se essa é a chave definida na URL
+
+    requisicao.rejeitar(usuario=request.user)
+    messages.success(request, "Requisição rejeitada.")
+    return redirect('detalhe_requisicao', pk=requisicao_id)  # Mudança aqui também
+
+
+@login_required
+def confirmar_transferencia(request, requisicao_id):
+    requisicao = get_object_or_404(Requisicao, id=requisicao_id)
+
+    if requisicao.status != 'Aprovada':
+        messages.error(request, "A transferência só pode ser confirmada para requisições aprovadas.")
+        return redirect('detalhe_requisicao', requisicao_id=requisicao_id)
+
+    try:
+        requisicao.confirmar_transferencia()
+        messages.success(request, "Transferência confirmada e estoque atualizado.")
+    except Exception as e:
+        messages.error(request, f"Ocorreu um erro ao confirmar a transferência: {e}")
+
+    return redirect('detalhe_requisicao', requisicao_id=requisicao_id)
+
+from django.views.generic import DetailView
+from .models import Requisicao
+
+class RequisicaoDetailView(DetailView):
+    model = Requisicao
+    template_name = 'estoque/detalhe_requisicao.html'
+    context_object_name = 'requisicao'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['itens'] = self.object.itens.all()  # Supondo que 'itens' está relacionado à requisição
+        return context
+
+from django.shortcuts import render
+from .models import Requisicao
+
+def lista_requisicoes(request):
+    requisicoes = Requisicao.objects.all()
+    return render(request, 'requisicoes/lista_requisicoes.html', {'requisicoes': requisicoes})
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from .forms import RequisicaoForm, ItemRequisicaoForm
+from .models import Requisicao, ItemRequisicao
+
+@login_required  # Assegure-se de que apenas usuários autenticados podem acessar essa view
+def criar_requisicao(request):
+    # Inicialize as variáveis
+    requisicao = None  # Inicialize requisicao como None
+    itens_requisicao = []  # Lista para armazenar itens da requisição
+
+    if request.method == 'POST':
+        form = RequisicaoForm(request.POST)
+        item_form = ItemRequisicaoForm(request.POST)
+
+        # Se o formulário principal for válido, salve a requisição
+        if form.is_valid():
+            requisicao = form.save(commit=False)
+            requisicao.save()
+            messages.success(request, "Requisição criada com sucesso.")
+
+            # Se o botão "Adicionar Item" foi pressionado e o formulário de item é válido
+            if 'add_item' in request.POST and item_form.is_valid():
+                item = item_form.save(commit=False)
+                item.requisicao = requisicao
+                item.save()
+                messages.success(request, "Item adicionado à requisição com sucesso.")
+                return redirect('criar_requisicao')  # Redirecione para a mesma página para limpar os formulários
+
+        else:
+            messages.error(request, "Por favor, corrija os erros abaixo.")
+
+    else:
+        form = RequisicaoForm()
+        item_form = ItemRequisicaoForm()
+
+    # Recupera os itens da requisição, se a requisição foi criada
+    if requisicao:
+        itens_requisicao = ItemRequisicao.objects.filter(requisicao=requisicao)
+
+    return render(request, 'estoque/criar_requisicao.html', {
+        'form': form,
+        'item_form': item_form,
+        'itens_requisicao': itens_requisicao,
+    })

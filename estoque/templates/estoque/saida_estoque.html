@@ -1,85 +1,73 @@
 {% extends 'estoque/base.html' %}
 
-{% block title %}Saída de Medicamento{% endblock %}
-
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">Saída de Medicamento</h2>
-    <form method="post" novalidate>
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="button" class="btn btn-info" id="select-lote-btn">Selecionar Lote</button>
-        <button type="submit" class="btn btn-primary">Salvar</button>
-    </form>
-</div>
-
-<!-- Modal para selecionar lote -->
-<div class="modal fade" id="selectLoteModal" tabindex="-1" aria-labelledby="selectLoteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="selectLoteModalLabel">Selecionar Lote</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <select id="lote-select" class="form-control select2">
-                    <!-- Lotes serão carregados dinamicamente via AJAX -->
-                </select>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="confirmar-lote">Confirmar Lote</button>
-            </div>
+    <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white text-center">
+            <h2 class="logincolor">Saída de Estoque</h2>
+        </div>
+        <div class="card-body">
+            <!-- Formulário para a saída de estoque -->
+            <form method="POST" id="saida-estoque-form">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <!-- Botão para confirmar a retirada -->
+                <button type="submit" class="btn btn-primary mt-4">Confirmar Retirada</button>
+                <button type="submit" class="btn btn-success">Adicionar Medicamentos</button>
+            </form>
         </div>
     </div>
 </div>
 
+<!-- Estilos CSS para ajuste de layout -->
+
+
+
+<!-- Scripts JavaScript -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     $(document).ready(function() {
-        // Inicializar Select2 nos campos existentes
-        $('#id_medicamento, #id_departamento').select2();
+        // Inicializa Select2 nos campos especificados
+        $('#id_medicamento, #id_lote, #id_departamento').select2();
 
-        $('#select-lote-btn').on('click', function() {
-            const medicamentoId = $('#id_medicamento').val();
+        // Evento para desabilitar o botão de submit enquanto o formulário está sendo processado
+        const form = document.querySelector('#saida-estoque-form');
+        form.addEventListener('submit', function() {
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true; // Desabilita o botão
+            submitButton.textContent = 'Processando...'; // Atualiza texto do botão
+        });
 
-            if (!medicamentoId) {
-                alert('Por favor, selecione um medicamento primeiro.');
-                return;
-            }
+        // Adiciona evento ao campo medicamento para atualizar lotes ao mudar
+        $('#id_medicamento').on('change', function() {
+            const medicamentoId = $(this).val();
+            const loteSelect = $('#id_lote');
 
-            // Faz a requisição AJAX para buscar os lotes
+            // Faz a requisição para obter os lotes correspondentes ao medicamento
             $.ajax({
-                url: `/api/lotes_por_medicamento/`, // Chama a URL da API
+                url: `/estoque/api/lotes_por_medicamento/${medicamentoId}/`,
                 type: 'GET',
-                data: {
-                    medicamento_id: medicamentoId
-                },
+                dataType: 'json',
                 success: function(data) {
-                    const loteSelect = $('#lote-select');
-                    loteSelect.empty(); // Limpa o select
-
-                    // Preenche o select com os lotes retornados
+                    // Limpa as opções anteriores de lote
+                    loteSelect.empty();
+                    loteSelect.append(new Option("Selecione um lote", ""));
+                    
+                    // Itera sobre os lotes retornados e adiciona ao select
                     data.lotes.forEach(function(lote) {
-                        const option = $('<option></option>').val(lote.id).text(lote.lote);
+                        const option = $('<option></option>').val(lote.id).text(`${lote.lote} - ${lote.quantidade} unidades`);
                         loteSelect.append(option);
                     });
 
                     // Atualiza o Select2
                     loteSelect.trigger('change');
-
-                    // Exibe o modal de seleção de lote
-                    const selectLoteModal = new bootstrap.Modal(document.getElementById('selectLoteModal'));
-                    selectLoteModal.show();
                 },
                 error: function(xhr, status, error) {
                     console.error('Erro ao buscar lotes:', error);
                 }
             });
-        });
-
-        $('#confirmar-lote').on('click', function() {
-            const selectedLote = $('#lote-select').val();
-            $('#id_lote').val(selectedLote).trigger('change');
-            $('#selectLoteModal').modal('hide');
         });
     });
 </script>

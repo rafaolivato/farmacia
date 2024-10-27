@@ -27,7 +27,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('estoque/', include('estoque.urls')),
     path('', RedirectView.as_view(url='/estoque/', permanent=True)),  # Redireciona a URL raiz para /estoque/
-    path('api/lotes_por_medicamento/', estoque_views.lotes_por_medicamento, name='lotes_por_medicamento'),  # Adicione a URL da API
+
 ]
 
 if settings.DEBUG:

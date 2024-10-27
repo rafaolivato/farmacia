@@ -1,0 +1,80 @@
+{% extends "estoque/base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Nova Requisição</h2>
+    <form method="post" action="{% url 'criar_requisicao' %}">
+        {% csrf_token %}
+        
+        <!-- Se houver mensagens de erro -->
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                Corrija os erros abaixo.
+            </div>
+        {% endif %}
+        
+        <div class="form-group">
+            <label for="estabelecimento_origem">Requisitante (Estabelecimento de Origem):</label>
+            {{ form.estabelecimento_origem }}
+        </div>
+
+        <div class="form-group">
+            <label for="estabelecimento_destino">Destino (Estabelecimento de Destino):</label>
+            {{ form.estabelecimento_destino }}
+        </div>
+
+        <div class="form-group">
+            <label for="observacoes">Observações:</label>
+            {{ form.observacoes }}
+        </div>
+        
+        <h3>Adicionar Medicamento</h3>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="medicamento">Medicamento:</label>
+                    {{ item_form.medicamento }}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="quantidade">Quantidade:</label>
+                    {{ item_form.quantidade }}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary" name="add_item">Adicionar Item</button>
+            </div>
+        </div>
+        
+        
+        <!-- Exibe itens adicionados -->
+        {% if itens_requisicao %}
+            <h3>Itens da Requisição</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Medicamento</th>
+                        <th>Quantidade</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens_requisicao %}
+                        <tr>
+                            <td>{{ item.medicamento }}</td>
+                            <td>{{ item.quantidade }}</td>
+                            <td>
+                                <a href="{% url 'remover_item_requisicao' item.id %}" class="btn btn-danger btn-sm">Remover</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        <!-- Botões de ação para a requisição -->
+        <button type="submit" class="btn btn-success" name="submit_request">Enviar para Aprovação</button>
+    </form>
+</div>
+{% endblock %}

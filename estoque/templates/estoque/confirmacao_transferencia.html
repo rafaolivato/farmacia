@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmação de Transferência</title>
+</head>
+<body>
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <h1>Transferência Confirmada</h1>
+    <p>A transferência da requisição #{{ requisicao.id }} foi realizada com sucesso!</p>
+    <a href="{% url 'lista_requisicoes' %}">Voltar para a Lista de Requisições</a>
+</body>
+</html>

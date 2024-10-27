@@ -1,0 +1,36 @@
+{% extends "estoque/base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>Detalhe da Requisição</h1>
+    <p><strong>Estabelecimento Origem:</strong> {{ requisicao.estabelecimento_origem }}</p>
+    <p><strong>Estabelecimento Destino:</strong> {{ requisicao.estabelecimento_destino }}</p>
+    <p><strong>Data da Requisição:</strong> {{ requisicao.data_requisicao }}</p>
+    <p><strong>Status:</strong> {{ requisicao.get_status_display }}</p>
+
+    <h2>Itens da Requisição</h2>
+    <ul>
+        {% for item in itens %}
+            <li>{{ item.medicamento.nome }} - Quantidade: {{ item.quantidade }}</li>
+        {% endfor %}
+    </ul>
+
+    {% if requisicao.status == 'Pendente' %}
+        <form action="{% url 'aprovar_requisicao' requisicao.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Aprovar</button>
+        </form>
+        <form action="{% url 'rejeitar_requisicao' requisicao.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Rejeitar</button>
+        </form>
+    {% elif requisicao.status == 'Aprovada' %}
+        <form action="{% url 'confirmar_transferencia' requisicao.id %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning">Confirmar Transferência</button>
+        </form>
+    {% else %}
+        <p>Esta requisição já foi processada.</p>
+    {% endif %}
+</div>
+{% endblock %}

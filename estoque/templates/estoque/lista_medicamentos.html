@@ -7,6 +7,7 @@
 <table class="table">
     <thead>
         <tr>
+            <th scope="col">ID</th>
             <th scope="col">Nome</th>
             <th scope="col">Localização</th>
             <th scope="col">Validade</th>
@@ -25,6 +26,7 @@
                         {% else %}
                             <tr>
                         {% endif %}
+                            <td>{{ detalhe_medicamento.medicamento__id }}</td>
                             <td>{{ detalhe_medicamento.medicamento__nome }}</td>
                             <td>{{ detalhe_medicamento.localizacao }}</td>
                             <td>{{ validade|date:"d/m/Y" }}</td>

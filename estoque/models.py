@@ -6,8 +6,21 @@ from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.contrib.auth.models import User
-from .estabelecimento import Estabelecimento
 
+class Estabelecimento(models.Model):
+    TIPOS_ESTABELECIMENTO = [
+        ('Farmacia', 'Farmácia'),
+        ('Almoxarifado Central', 'Almoxarifado Central'),
+    ]
+
+    nome = models.CharField(max_length=255)
+    codigo_cnes = models.CharField(max_length=20)
+    farmaceutico_responsavel = models.CharField(max_length=255)
+    imagem_logotipo = models.ImageField(upload_to='logotipos/')
+    tipo_estabelecimento = models.CharField(max_length=20, choices=TIPOS_ESTABELECIMENTO)
+
+    def __str__(self):
+        return self.nome
 
 class Departamento(models.Model):
     nome = models.CharField(max_length=100)
@@ -102,8 +115,29 @@ class EntradaEstoque(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_display()} de medicamentos"
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Atualizar ou criar o estoque para o medicamento no estabelecimento
+        estoque, created = Estoque.objects.get_or_create(
+            estabelecimento=self.estabelecimento,  # Adicione o campo 'estabelecimento' ao model EntradaEstoque
+            medicamento=self.medicamento,
+            defaults={'quantidade': self.quantidade}
+        )
+        if not created:
+            estoque.quantidade += self.quantidade
+            estoque.save()
+
+class Estoque(models.Model):
+    estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='estoques')
+    medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
+    quantidade = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.medicamento.nome} - {self.estabelecimento.nome} - {self.quantidade} unidades"
 
 class DetalhesMedicamento(models.Model):
+    
     estoque = models.ForeignKey(EntradaEstoque, on_delete=models.CASCADE, related_name='detalhes_medicamentos')
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField(default=0)
@@ -260,31 +294,102 @@ class DistribuicaoMedicamento(models.Model):
     lote = models.CharField(max_length=50)
     validade = models.DateField()
     
-    def __str__(self):
-        return f'{self.medicamento.nome} ({self.quantidade} unidades)'
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Deduzir do estoque do estabelecimento de origem
+        estoque_origem = Estoque.objects.get(
+            estabelecimento=self.distribuicao.estabelecimento_origem,
+            medicamento=self.medicamento
+        )
+        estoque_origem.quantidade -= self.quantidade
+        estoque_origem.save()
 
-from django.db import models
-from .models import Estabelecimento, Medicamento
+        # Adicionar ao estoque do estabelecimento de destino
+        estoque_destino, created = Estoque.objects.get_or_create(
+            estabelecimento=self.distribuicao.estabelecimento_destino,
+            medicamento=self.medicamento,
+            defaults={'quantidade': 0}
+        )
+        estoque_destino.quantidade += self.quantidade
+        estoque_destino.save()
 
 class Requisicao(models.Model):
+
     estabelecimento_origem = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='requisicoes_origem')
     estabelecimento_destino = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='requisicoes_destino')
+    observacoes = models.CharField(max_length=100, blank=True, null=True)
     data_requisicao = models.DateField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=[('Pendente', 'Pendente'), ('Atendida', 'Atendida')], default='Pendente')
+    status = models.CharField(max_length=20, choices=[('Pendente', 'Pendente'), ('Aprovada', 'Aprovada'), ('Rejeitada', 'Rejeitada'), ('Transferida', 'Transferida')], default='Pendente')
+    data_aprovacao = models.DateField(null=True, blank=True)
+    usuario_aprovador = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='requisicoes_aprovadas')
+
+
+    def aprovar(self, usuario):
+        """Aprova a requisição e altera o status."""
+        self.status = 'Aprovada'
+        self.data_aprovacao = timezone.now()
+        self.usuario_aprovador = usuario
+        self.save()
+
+    def rejeitar(self, usuario):
+        """Rejeita a requisição e altera o status."""
+        self.status = 'Rejeitada'
+        self.data_aprovacao = timezone.now()
+        self.usuario_aprovador = usuario
+        self.save()
 
     def __str__(self):
-        return f'Requisição de {self.estabelecimento_origem.nome} para {self.estabelecimento_destino.nome}'
+        return f'Requisição de {self.estabelecimento_origem.nome} para {self.estabelecimento_destino.nome} - Status: {self.status}'
+    
+    def confirmar_transferencia(self):
+        """Confirma a transferência de todos os itens da requisição."""
+        if self.status != 'Aprovada':
+            raise ValidationError("A requisição precisa estar aprovada para confirmação de transferência.")
+
+        with transaction.atomic():
+            for item in self.itens.all():
+                item.transferir_estoque()
+
+            # Atualizar o status da requisição para Transferida
+            self.status = 'Transferida'
+            self.save()
+
 
 class ItemRequisicao(models.Model):
-    requisicao = models.ForeignKey(Requisicao, on_delete=models.CASCADE, related_name='itens')
+    requisicao = models.ForeignKey(Requisicao, related_name='itens', on_delete=models.CASCADE)
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField()
 
+    def transferir_estoque(self):
+        """Realiza a transferência do estoque entre estabelecimentos."""
+        if self.requisicao.status != 'Aprovada':
+            raise ValidationError("A requisição precisa estar aprovada para que a transferência seja realizada.")
+
+        # Verificar e atualizar o estoque do estabelecimento de origem
+        estoque_origem = DetalhesMedicamento.objects.get(
+            estabelecimento=self.requisicao.estabelecimento_origem, 
+            medicamento=self.medicamento
+        )
+        if estoque_origem.quantidade < self.quantidade:
+            raise ValidationError("Estoque insuficiente para a transferência.")
+
+        # Atualizar estoque do estabelecimento de origem
+        estoque_origem.quantidade -= self.quantidade
+        estoque_origem.save()
+
+        # Atualizar ou criar registro de estoque no estabelecimento de destino
+        estoque_destino, created = DetalhesMedicamento.objects.get_or_create(
+            estabelecimento=self.requisicao.estabelecimento_destino,
+            medicamento=self.medicamento,
+            defaults={'quantidade': 0}
+        )
+        estoque_destino.quantidade += self.quantidade
+        estoque_destino.save()
+
     def __str__(self):
-        return f'{self.quantidade} de {self.medicamento.nome}'
+        return f'{self.quantidade} de {self.medicamento.nome} (Requisição {self.requisicao.id})'
+
     
-
-
 
 class Operador(AbstractUser):
     nome_completo = models.CharField(max_length=255)
@@ -306,3 +411,5 @@ class Operador(AbstractUser):
 
     def __str__(self):
         return self.nome_completo
+
+
