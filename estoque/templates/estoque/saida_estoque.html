@@ -10,10 +10,13 @@
             <!-- Formulário para a saída de estoque -->
             <form method="POST" id="saida-estoque-form">
                 {% csrf_token %}
+                <div id="medicamento-container">
                 {{ form.as_p }}
+                </div>
                 <!-- Botão para confirmar a retirada -->
                 <button type="submit" class="btn btn-primary mt-4">Confirmar Retirada</button>
-                <button type="submit" class="btn btn-success">Adicionar Medicamentos</button>
+                <button type="button" class="btn btn-success" id="add-medicamento-btn">Adicionar Medicamentos</button>
+
             </form>
         </div>
     </div>
@@ -29,39 +32,24 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     $(document).ready(function() {
-        // Inicializa Select2 nos campos especificados
         $('#id_medicamento, #id_lote, #id_departamento').select2();
+        
+        let medicamentoIndex = 0;
 
-        // Evento para desabilitar o botão de submit enquanto o formulário está sendo processado
-        const form = document.querySelector('#saida-estoque-form');
-        form.addEventListener('submit', function() {
-            const submitButton = form.querySelector('button[type="submit"]');
-            submitButton.disabled = true; // Desabilita o botão
-            submitButton.textContent = 'Processando...'; // Atualiza texto do botão
-        });
-
-        // Adiciona evento ao campo medicamento para atualizar lotes ao mudar
         $('#id_medicamento').on('change', function() {
             const medicamentoId = $(this).val();
             const loteSelect = $('#id_lote');
-
-            // Faz a requisição para obter os lotes correspondentes ao medicamento
             $.ajax({
                 url: `/estoque/api/lotes_por_medicamento/${medicamentoId}/`,
                 type: 'GET',
                 dataType: 'json',
                 success: function(data) {
-                    // Limpa as opções anteriores de lote
                     loteSelect.empty();
                     loteSelect.append(new Option("Selecione um lote", ""));
-                    
-                    // Itera sobre os lotes retornados e adiciona ao select
                     data.lotes.forEach(function(lote) {
                         const option = $('<option></option>').val(lote.id).text(`${lote.lote} - ${lote.quantidade} unidades`);
                         loteSelect.append(option);
                     });
-
-                    // Atualiza o Select2
                     loteSelect.trigger('change');
                 },
                 error: function(xhr, status, error) {
@@ -69,6 +57,42 @@
                 }
             });
         });
+
+        $('#add-medicamento-btn').click(function() {
+            medicamentoIndex++;
+            const medicamentoContainer = $('#medicamento-container');
+            const newEntry = `
+                <div class="medicamento-entry">
+                    <div class="form-group">
+                        <label for="id_medicamento_${medicamentoIndex}">Medicamento</label>
+                        <select id="id_medicamento_${medicamentoIndex}" name="medicamento_${medicamentoIndex}" class="form-control select2">
+                            ${$('#id_medicamento').html()}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="id_quantidade_${medicamentoIndex}">Quantidade</label>
+                        <input type="number" id="id_quantidade_${medicamentoIndex}" name="quantidade_${medicamentoIndex}" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="id_lote_${medicamentoIndex}">Lote</label>
+                        <select id="id_lote_${medicamentoIndex}" name="lote_${medicamentoIndex}" class="form-control select2">
+                            ${$('#id_lote').html()}
+                        </select>
+                    </div>
+                </div>
+            `;
+            medicamentoContainer.append(newEntry);
+            $('.select2').select2(); 
+        });
+
+        const form = document.querySelector('#saida-estoque-form');
+        form.addEventListener('submit', function() {
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Processando...';
+        });
     });
 </script>
+
+
 {% endblock %}

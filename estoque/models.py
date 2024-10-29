@@ -97,7 +97,8 @@ class EntradaEstoque(models.Model):
         ("distribuidora", "Distribuidora"),
         ("entidade", "Entidade"),
     )
-
+    
+    estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, default=1)
     tipo = models.CharField(max_length=50, choices=TIPO_MOVIMENTACAO_CHOICES, verbose_name="Tipo de Entrada")
     data_hora = models.DateTimeField(auto_now_add=True)
     data = models.DateField(default=date.today, verbose_name="Data Nota Fiscal")

@@ -213,6 +213,7 @@ def entrada_estoque(request):
         formset = DetalhesMedicamentoFormSet(request.POST, instance=EntradaEstoque())
         
         if form.is_valid() and formset.is_valid():
+            entrada_estoque.estabelecimento = request.user.estabelecimento
             entrada_estoque = form.save(commit=False)
             
             # Função para validar e converter datas
@@ -462,66 +463,42 @@ def saida_estoque(request):
     if request.method == "POST":
         form = SaidaEstoqueForm(request.POST)
         if form.is_valid():
-            # Extração dos dados validados do formulário
-            medicamento = form.cleaned_data["medicamento"]
-            quantidade = form.cleaned_data["quantidade"]
-            lote = form.cleaned_data["lote"]  # Obtem o objeto 'DetalhesMedicamento' selecionado no formulário
-            departamento = form.cleaned_data["departamento"]  # Campo selecionado pelo usuário
+            # Itera sobre os medicamentos adicionados dinamicamente
+            for i in range(len(request.POST.getlist("medicamento"))):
+                medicamento = Medicamento.objects.get(id=request.POST.getlist("medicamento")[i])
+                quantidade = int(request.POST.getlist("quantidade")[i])
+                lote = DetalhesMedicamento.objects.get(id=request.POST.getlist("lote")[i])
+                departamento = form.cleaned_data["departamento"]
 
+                if not isinstance(lote, DetalhesMedicamento):
+                    messages.error(request, "O lote selecionado não é válido. Por favor, tente novamente.")
+                    return redirect("saida_estoque")
 
-            # Verificação para garantir que o lote é um objeto válido
-            if not isinstance(lote, DetalhesMedicamento):
-                messages.error(request, "O lote selecionado não é válido. Por favor, tente novamente.")
-                return redirect("saida_estoque")
-
-
-            # Verifica se há quantidade suficiente no lote selecionado
-            if lote.quantidade >= quantidade:
-                # Subtrai a quantidade desejada do estoque do lote
-                lote.quantidade = F("quantidade") - quantidade
-                lote.save()  # Salva as alterações no estoque do lote
-
-
-                # Atualiza a instância do lote para obter a quantidade atualizada do banco de dados
-                lote.refresh_from_db()
-
-
-                # Cria o objeto de saída de estoque com os dados fornecidos
-                saida = SaidaEstoque(
-                    operador=request.user.username,
-                    medicamento=medicamento,  # Usa o objeto medicamento selecionado no formulário
-                    lote=lote,  # Lote associado ao medicamento
-                    quantidade=quantidade,
-                    departamento=departamento,  # Usa o departamento selecionado no formulário
-                    data_atendimento=date.today(),  # Define a data de atendimento como hoje
-                )
-                saida.save()  # Salva a nova saída no banco de dados (UUID gerado automaticamente)
-
-
-                # Exibe mensagem de sucesso e redireciona para a mesma página para nova retirada
-                messages.success(
-                    request,
-                    f"Saída de estoque realizada com sucesso! Lote atualizado: {lote.lote} - Quantidade restante: {lote.quantidade}",
-                )
-                return redirect("saida_estoque")  # Redireciona para a mesma página para registrar outra saída
-            else:
-                # Caso a quantidade desejada seja maior que a disponível no lote
-                messages.error(
-                    request,
-                    f"Quantidade insuficiente no lote selecionado ({lote.lote}). Quantidade disponível: {lote.quantidade}",
-                )
+                if lote.quantidade >= quantidade:
+                    lote.quantidade = F("quantidade") - quantidade
+                    lote.save()
+                    lote.refresh_from_db()
+                    saida = SaidaEstoque(
+                        operador=request.user.username,
+                        medicamento=medicamento,
+                        lote=lote,
+                        quantidade=quantidade,
+                        departamento=departamento,
+                        data_atendimento=date.today(),
+                    )
+                    saida.save()
+                else:
+                    messages.error(request, f"Quantidade insuficiente no lote selecionado ({lote.lote}). Quantidade disponível: {lote.quantidade}")
+                    
+            messages.success(request, "Saída de estoque realizada com sucesso!")
+            return redirect("saida_estoque")
         else:
-            messages.error(
-                request,
-                "Erro ao validar o formulário. Por favor, revise os dados inseridos.",
-            )
+            messages.error(request, "Erro ao validar o formulário. Por favor, revise os dados inseridos.")
     else:
-        # Inicializa um formulário vazio se o método não for POST
         form = SaidaEstoqueForm()
 
-
-    # Renderiza o template com o formulário
     return render(request, "estoque/saida_estoque.html", {"form": form})
+
 
 
 from django.http import JsonResponse
