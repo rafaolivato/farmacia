@@ -151,7 +151,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'estoque', 'media')
 
 
-LOGIN_REDIRECT_URL = '/transferencia_medicamentos/'
+LOGIN_REDIRECT_URL = '/estoque/'
 
 # settings.py
 
