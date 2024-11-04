@@ -12,7 +12,6 @@ from .models import (
     Estabelecimento,
     Departamento,
     SaidaEstoque,
-    Operador,
     Dispensacao,
     DistribuicaoMedicamento,
     Requisicao
@@ -22,7 +21,6 @@ from .models import (
 from .forms import (
     MedicamentoForm,
     LoginForm,
-    OperadorForm,
     PacienteForm,
     FornecedorForm,
     EntradaEstoqueForm,
@@ -56,6 +54,21 @@ from django.db.models import F, Sum
 from django.utils import timezone
 from datetime import timedelta
 from .models import DetalhesMedicamento
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.contrib.auth.models import User
+from .models import Profile
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    instance.profile.save()
+
 
 def lista_medicamentos(request):
     # Data atual
@@ -198,23 +211,44 @@ def lista_localizacoes(request):
 
 from django.shortcuts import render, redirect
 from django.forms import inlineformset_factory
-from .models import EntradaEstoque, DetalhesMedicamento, Medicamento, Localizacao, Fabricante
+from .models import EntradaEstoque, DetalhesMedicamento, Medicamento, Localizacao, Fabricante, Profile
 from .forms import EntradaEstoqueForm, DetalhesMedicamentoForm
 import logging
 from datetime import datetime
+from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError
 
 logger = logging.getLogger(__name__)
 
 DetalhesMedicamentoFormSet = inlineformset_factory(EntradaEstoque, DetalhesMedicamento, form=DetalhesMedicamentoForm, extra=1)
 
+@login_required
 def entrada_estoque(request):
+    # Garante que o usuário tenha um perfil
+    if not hasattr(request.user, 'profile'):
+        try:
+            Profile.objects.create(user=request.user)
+        except IntegrityError:
+            pass  # Evita erros de duplicação, caso o perfil já seja criado em outra thread
+
+    # Verifica se o perfil do usuário tem um estabelecimento
+    if not hasattr(request.user.profile, 'estabelecimento'):
+        return render(request, 'estoque/entrada_estoque.html', {
+            'error_message': 'O perfil do usuário não está associado a um estabelecimento. Entre em contato com o administrador.',
+            'form': EntradaEstoqueForm(),
+            'formset': DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none()),
+            'medicamentos_disponiveis': Medicamento.objects.all(),
+            'localizacoes_disponiveis': Localizacao.objects.all(),
+            'fabricantes_disponiveis': Fabricante.objects.all(),
+        })
+
     if request.method == 'POST':
         form = EntradaEstoqueForm(request.POST)
         formset = DetalhesMedicamentoFormSet(request.POST, instance=EntradaEstoque())
         
         if form.is_valid() and formset.is_valid():
-            entrada_estoque.estabelecimento = request.user.estabelecimento
             entrada_estoque = form.save(commit=False)
+            entrada_estoque.estabelecimento = request.user.profile.estabelecimento
             
             # Função para validar e converter datas
             def parse_date(date_str):
@@ -239,6 +273,7 @@ def entrada_estoque(request):
                     'error_message': 'Data inválida fornecida. Por favor, corrija e tente novamente.'
                 })
             
+            entrada_estoque.estabelecimento = request.user.estabelecimento
             entrada_estoque.save()
             formset.instance = entrada_estoque
             formset.save()
@@ -264,6 +299,7 @@ def entrada_estoque(request):
         'localizacoes_disponiveis': localizacoes_disponiveis,
         'fabricantes_disponiveis': fabricantes_disponiveis,
     })
+
 
 
 @login_required
@@ -311,30 +347,8 @@ def lista_departamento(request):
         request, "estoque/lista_departamento.html", {"departamentos": departamentos}
     )
 
-
-def listar_operadores(request):
-    operadores = Operador.objects.all()
-    return render(request, "estoque/listar_operadores.html", {"operadores": operadores})
-
-
 def is_admin(user):
     return user.is_staff
-
-
-from django.shortcuts import render, redirect
-from .forms import OperadorForm
-
-def cadastrar_operador(request):
-    if request.method == 'POST':
-        form = OperadorForm(request.POST)
-        if form.is_valid():
-            operador = form.save(commit=False)
-            operador.save()
-            form.save_m2m()  # Salva os relacionamentos ManyToMany
-            return redirect('listar_operadores')
-    else:
-        form = OperadorForm()
-    return render(request, 'estoque/cadastrar_operador.html', {'form': form})
 
 
 def login_view(request):
@@ -479,7 +493,7 @@ def saida_estoque(request):
                     lote.save()
                     lote.refresh_from_db()
                     saida = SaidaEstoque(
-                        operador=request.user.username,
+                        user=request.user.username,
                         medicamento=medicamento,
                         lote=lote,
                         quantidade=quantidade,

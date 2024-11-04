@@ -1,24 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import  Distribuicao, DistribuicaoMedicamento,SaidaEstoque,Departamento,Dispensacao, DispensacaoMedicamento,Medicamento, EntradaEstoque, Paciente, Fornecedor, DetalhesMedicamento, Operador, Estabelecimento, Fabricante
-
-# Defina a classe OperadorAdmin
-class OperadorAdmin(UserAdmin):
-    fieldsets = (
-        (None, {'fields': ('username', 'password')}),
-        ('Informações Pessoais', {'fields': ('nome_completo', 'cpf', 'email')}),
-        ('Permissões', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        ('Datas Importantes', {'fields': ('last_login', 'date_joined')}),
-        ('Perfil', {'fields': ('perfil', 'estabelecimentos')}),
-    )
-
-    add_fieldsets = (
-        (None, {
-            'classes': ('wide',),
-            'fields': ('username', 'nome_completo', 'cpf', 'email', 'password1', 'password2'),
-        }),
-    )
-
+from .models import  Distribuicao, DistribuicaoMedicamento,SaidaEstoque,Departamento,Dispensacao, DispensacaoMedicamento,Medicamento, EntradaEstoque, Paciente, Fornecedor, DetalhesMedicamento, Estabelecimento, Fabricante
 
 class DistribuicaoMedicamentoInline(admin.TabularInline):
     model = DistribuicaoMedicamento
@@ -28,7 +10,7 @@ class DistribuicaoAdmin(admin.ModelAdmin):
     inlines = [DistribuicaoMedicamentoInline]
     list_display = ('estabelecimento_origem', 'estabelecimento_destino', 'data_atendimento')
 
-admin.site.register(Operador, OperadorAdmin)
+
 admin.site.register(Medicamento)
 admin.site.register(EntradaEstoque)
 admin.site.register(Paciente)

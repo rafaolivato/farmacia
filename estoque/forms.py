@@ -13,7 +13,6 @@ from .models import (
     Departamento,
     SaidaEstoque,
     DetalheDispensacao,
-    Operador,
     Medico,
     Dispensacao,
     DispensacaoMedicamento,
@@ -198,18 +197,7 @@ class EstabelecimentoForm(forms.ModelForm):
         fields = ['nome', 'codigo_cnes', 'farmaceutico_responsavel', 'imagem_logotipo', 'tipo_estabelecimento']
 
 
-from django import forms
-from .models import Operador, Estabelecimento
-
-
-class OperadorForm(forms.ModelForm):
-    class Meta:
-        model = Operador
-        fields = ['username', 'nome_completo', 'email', 'cpf', 'estabelecimentos']
-        widgets = {
-            'estabelecimentos': forms.SelectMultiple(attrs={'class': 'select2'}),
-        }
-        
+      
 class MedicoForm(forms.ModelForm):
     class Meta:
         model = Medico

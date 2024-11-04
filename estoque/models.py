@@ -7,6 +7,13 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.contrib.auth.models import User
 
+from django.contrib.auth.models import User
+from django.db import models
+
+
+
+
+
 class Estabelecimento(models.Model):
     TIPOS_ESTABELECIMENTO = [
         ('Farmacia', 'Farmácia'),
@@ -21,6 +28,10 @@ class Estabelecimento(models.Model):
 
     def __str__(self):
         return self.nome
+    
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.SET_NULL, null=True, blank=True)
 
 class Departamento(models.Model):
     nome = models.CharField(max_length=100)
@@ -260,7 +271,7 @@ class SaidaEstoque(models.Model):
 
     # Usaremos um UUID para garantir que o numero_saida seja único e gerado automaticamente
     numero_saida = models.CharField(max_length=36, unique=True, blank=True)  # Aumentado para suportar o UUID
-    operador = models.CharField(max_length=100)
+    user = models.CharField(max_length=100)
     observacao = models.TextField(blank=True, null=True, verbose_name="Observação")
     data_atendimento = models.DateField()
     departamento = models.ForeignKey('Departamento', on_delete=models.CASCADE)
@@ -391,26 +402,5 @@ class ItemRequisicao(models.Model):
         return f'{self.quantidade} de {self.medicamento.nome} (Requisição {self.requisicao.id})'
 
     
-
-class Operador(AbstractUser):
-    nome_completo = models.CharField(max_length=255)
-    cpf = models.CharField(max_length=14, unique=True)
-    estabelecimentos = models.ManyToManyField(Estabelecimento)
-
-    groups = models.ManyToManyField(
-        Group,
-        related_name='operador_set',
-        blank=True,
-        help_text="Os grupos aos quais este usuário pertence."
-    )
-    user_permissions = models.ManyToManyField(
-        Permission,
-        related_name='operador_permissions_set',
-        blank=True,
-        help_text="Permissões específicas para este usuário."
-    )
-
-    def __str__(self):
-        return self.nome_completo
 
 
