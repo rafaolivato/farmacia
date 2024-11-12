@@ -20,7 +20,6 @@ from .models import (
 
 from .forms import (
     MedicamentoForm,
-    LoginForm,
     PacienteForm,
     FornecedorForm,
     EntradaEstoqueForm,
@@ -34,6 +33,7 @@ from .forms import (
     MedicoForm,
     DispensacaoForm,
     DispensacaoMedicamentoFormSet,
+    
 )
 from django.db.models import Sum
 from django.utils import timezone
@@ -69,7 +69,54 @@ def create_user_profile(sender, instance, created, **kwargs):
 def save_user_profile(sender, instance, **kwargs):
     instance.profile.save()
 
+def register(request):
+    if request.method == 'POST':
+        user_form = UserRegisterForm(request.POST)
+        profile_form = ProfileForm(request.POST)
+        if user_form.is_valid() and profile_form.is_valid():
+            user = user_form.save()
+            profile = profile_form.save(commit=False)
+            profile.user = user
+            profile.save()
+            login(request, user)  # Logar o usuário após o registro
+            return redirect('dashboard')  # Redireciona para a dashboard
+    else:
+        user_form = UserRegisterForm()
+        profile_form = ProfileForm()
+    return render(request, 'estoque/register.html', {'user_form': user_form, 'profile_form': profile_form})
 
+
+# autenticacao/views.py
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+
+@login_required
+def dashboard(request):
+    profile = request.user.profile
+    if profile.estabelecimento:
+        context = {'estabelecimento': profile.estabelecimento}
+        return render(request, 'estoque/base.html', context)
+    else:
+        return redirect('estoque/register')
+
+    
+    
+from .models import Estabelecimento
+
+@login_required
+def associar_estabelecimento(request):
+    if request.method == "POST":
+        # Recupera o estabelecimento escolhido
+        estabelecimento_id = request.POST.get("estabelecimento")
+        estabelecimento = Estabelecimento.objects.get(id=estabelecimento_id)
+        # Associa o estabelecimento ao perfil do usuário
+        request.user.profile.estabelecimento = estabelecimento
+        request.user.profile.save()
+        return redirect('estoque/dashboard')  # Redireciona para o dashboard após a associação
+
+    estabelecimentos = Estabelecimento.objects.all()
+    return render(request, 'estoque/associar_estabelecimento.html', {'estabelecimentos': estabelecimentos})
+    
 def lista_medicamentos(request):
     # Data atual
     now = timezone.now()
@@ -147,6 +194,8 @@ def cadastro_fabricante(request):
     return render(request, "estoque/cadastro_fabricante.html", {"form": form})
 
 
+from estoque.models import Estabelecimento
+
 def carregar_medicamentos_excel(request):
     # Diretório onde os arquivos Excel estão localizados
     excel_dir = os.path.join(settings.MEDIA_ROOT, "excel")
@@ -154,16 +203,25 @@ def carregar_medicamentos_excel(request):
         "codigos_corretos.xlsx",
     ]
 
+    # Obter o estabelecimento padrão para os medicamentos importados
+    estabelecimento_padrao = Estabelecimento.objects.get(nome="Almoxarifado Central")
+
     for file_name in excel_files:
         file_path = os.path.join(excel_dir, file_name)
         if os.path.exists(file_path):
             df = pd.read_excel(file_path)
             for index, row in df.iterrows():
                 Medicamento.objects.update_or_create(
-                    codigo_identificacao=row["Código"], defaults={"nome": row["Nome"]}
+                    codigo_identificacao=row["Código"],
+                    defaults={
+                        "nome": row["Nome"],
+                        "estabelecimento": estabelecimento_padrao,  # Define o estabelecimento padrão
+                    }
                 )
 
     return redirect("lista_medicamentos")
+
+
 
 
 @login_required
@@ -208,30 +266,13 @@ def lista_localizacoes(request):
         request, "estoque/lista_localizacoes.html", {"localizacoes": localizacoes}
     )
 
-from django.shortcuts import render, redirect
-from django.forms import inlineformset_factory
-from .models import EntradaEstoque, DetalhesMedicamento, Medicamento, Localizacao, Fabricante, Profile
-from .forms import EntradaEstoqueForm, DetalhesMedicamentoForm
-import logging
-from datetime import datetime
-from django.contrib.auth.decorators import login_required
-from django.db import IntegrityError
 
-logger = logging.getLogger(__name__)
-
-DetalhesMedicamentoFormSet = inlineformset_factory(EntradaEstoque, DetalhesMedicamento, form=DetalhesMedicamentoForm, extra=1)
+from django.db import transaction
 
 @login_required
 def entrada_estoque(request):
-    # Garante que o usuário tenha um perfil
-    if not hasattr(request.user, 'profile'):
-        try:
-            Profile.objects.get_or_create(user=request.user)
-        except IntegrityError:
-            pass  # Evita erros de duplicação, caso o perfil já seja criado em outra thread
-
-    # Verifica se o perfil do usuário tem um estabelecimento
-    if not hasattr(request.user.profile, 'estabelecimento'):
+    # Verifique se o usuário possui perfil e estabelecimento associados
+    if not hasattr(request.user, 'profile') or not hasattr(request.user.profile, 'estabelecimento'):
         return render(request, 'estoque/entrada_estoque.html', {
             'error_message': 'O perfil do usuário não está associado a um estabelecimento. Entre em contato com o administrador.',
             'form': EntradaEstoqueForm(),
@@ -246,59 +287,45 @@ def entrada_estoque(request):
         formset = DetalhesMedicamentoFormSet(request.POST, instance=EntradaEstoque())
         
         if form.is_valid() and formset.is_valid():
-            entrada_estoque = form.save(commit=False)
-            entrada_estoque.estabelecimento = request.user.profile.estabelecimento
-            entrada_estoque.user = request.user.profile  # Ajuste para usar o campo `profile`
-            
-            # Função para validar e converter datas
-            def parse_date(date_str):
-                try:
-                    return datetime.strptime(date_str, '%d/%m/%Y').date()
-                except ValueError as e:
-                    logger.error(f"Erro ao converter data: {e}")
-                    return None
+            try:
+                with transaction.atomic():
+                    entrada_estoque = form.save(commit=False)
+                    entrada_estoque.estabelecimento = request.user.profile.estabelecimento
+                    entrada_estoque.save()
 
-            # Verificar e converter as datas
-            entrada_estoque.data = parse_date(form.cleaned_data['data']) if isinstance(form.cleaned_data['data'], str) else form.cleaned_data['data']
-            entrada_estoque.data_recebimento = parse_date(form.cleaned_data['data_recebimento']) if isinstance(form.cleaned_data['data_recebimento'], str) else form.cleaned_data['data_recebimento']
-            
-            if entrada_estoque.data is None or entrada_estoque.data_recebimento is None:
-                logger.error("Data inválida fornecida")
+                    # Atribuir o `EntradaEstoque` ao formset e salvar cada `DetalhesMedicamento`
+                    formset.instance = entrada_estoque
+                    formset.save()
+                    
+                    # Adicione lógica para criar/atualizar o estoque aqui, se necessário
+
+                return redirect('lista_medicamentos')
+            except IntegrityError as e:
+                logger.error(f"Erro de integridade: {e}")
                 return render(request, 'estoque/entrada_estoque.html', {
                     'form': form,
                     'formset': formset,
                     'medicamentos_disponiveis': Medicamento.objects.all(),
                     'localizacoes_disponiveis': Localizacao.objects.all(),
                     'fabricantes_disponiveis': Fabricante.objects.all(),
-                    'error_message': 'Data inválida fornecida. Por favor, corrija e tente novamente.'
+                    'error_message': 'Ocorreu um erro ao salvar. Verifique os dados e tente novamente.'
                 })
-            
-            entrada_estoque.save()
-            formset.instance = entrada_estoque
-            formset.save()
-            return redirect('lista_medicamentos')
         else:
-            logger.error("Form or formset is not valid")
-            logger.error(f"Form errors: {form.errors}")
-            logger.error(f"Formset errors: {formset.errors}")
-            for form in formset:
-                logger.error(f"Formset form errors: {form.errors}")
+            logger.error("Form ou formset inválidos")
+            logger.error(f"Erros no form: {form.errors}")
+            logger.error(f"Erros no formset: {formset.errors}")
+
     else:
         form = EntradaEstoqueForm()
         formset = DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none())
-    
-    medicamentos_disponiveis = Medicamento.objects.all()
-    localizacoes_disponiveis = Localizacao.objects.all()
-    fabricantes_disponiveis = Fabricante.objects.all()
-    
+
     return render(request, 'estoque/entrada_estoque.html', {
         'form': form,
         'formset': formset,
-        'medicamentos_disponiveis': medicamentos_disponiveis,
-        'localizacoes_disponiveis': localizacoes_disponiveis,
-        'fabricantes_disponiveis': fabricantes_disponiveis,
+        'medicamentos_disponiveis': Medicamento.objects.all(),
+        'localizacoes_disponiveis': Localizacao.objects.all(),
+        'fabricantes_disponiveis': Fabricante.objects.all(),
     })
-
 
 @login_required
 def cadastrar_estabelecimento(request):
@@ -355,15 +382,14 @@ def login_view(request):
         if form.is_valid():
             user = authenticate(
                 request,
-                username=form.cleaned_data["user"],
-
+                username=form.cleaned_data["operador"],
                 password=form.cleaned_data["senha"],
             )
             if user is not None:
                 login(request, user)
                 return redirect("estoque/base")
             else:
-                messages.error(request, "Usuário inválido")
+                messages.error(request, "Operador inválido")
     else:
         form = LoginForm()
     return render(request, "estoque/login.html", {"form": form})

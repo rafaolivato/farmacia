@@ -19,8 +19,6 @@ from .models import (
    
 )
 
-
-
 from django.forms import modelformset_factory
 from django.db.models import signals
 from django import forms

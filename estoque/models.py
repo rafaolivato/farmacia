@@ -130,8 +130,8 @@ class EntradaEstoque(models.Model):
         # Atualizar ou criar o estoque para o medicamento no estabelecimento
         estoque, created = Estoque.objects.get_or_create(
             estabelecimento=self.estabelecimento,  # Adicione o campo 'estabelecimento' ao model EntradaEstoque
-            medicamento=self.medicamento,
-            defaults={'quantidade': self.quantidade}
+            
+            
         )
         if not created:
             estoque.quantidade += self.quantidade
