@@ -208,7 +208,6 @@ def lista_localizacoes(request):
         request, "estoque/lista_localizacoes.html", {"localizacoes": localizacoes}
     )
 
-
 from django.shortcuts import render, redirect
 from django.forms import inlineformset_factory
 from .models import EntradaEstoque, DetalhesMedicamento, Medicamento, Localizacao, Fabricante, Profile
@@ -227,7 +226,7 @@ def entrada_estoque(request):
     # Garante que o usuário tenha um perfil
     if not hasattr(request.user, 'profile'):
         try:
-            Profile.objects.create(user=request.user)
+            Profile.objects.get_or_create(user=request.user)
         except IntegrityError:
             pass  # Evita erros de duplicação, caso o perfil já seja criado em outra thread
 
@@ -249,6 +248,7 @@ def entrada_estoque(request):
         if form.is_valid() and formset.is_valid():
             entrada_estoque = form.save(commit=False)
             entrada_estoque.estabelecimento = request.user.profile.estabelecimento
+            entrada_estoque.user = request.user.profile  # Ajuste para usar o campo `profile`
             
             # Função para validar e converter datas
             def parse_date(date_str):
@@ -273,7 +273,6 @@ def entrada_estoque(request):
                     'error_message': 'Data inválida fornecida. Por favor, corrija e tente novamente.'
                 })
             
-            entrada_estoque.estabelecimento = request.user.estabelecimento
             entrada_estoque.save()
             formset.instance = entrada_estoque
             formset.save()
@@ -299,7 +298,6 @@ def entrada_estoque(request):
         'localizacoes_disponiveis': localizacoes_disponiveis,
         'fabricantes_disponiveis': fabricantes_disponiveis,
     })
-
 
 
 @login_required
@@ -357,14 +355,15 @@ def login_view(request):
         if form.is_valid():
             user = authenticate(
                 request,
-                username=form.cleaned_data["operador"],
+                username=form.cleaned_data["user"],
+
                 password=form.cleaned_data["senha"],
             )
             if user is not None:
                 login(request, user)
                 return redirect("estoque/base")
             else:
-                messages.error(request, "Operador inválido")
+                messages.error(request, "Usuário inválido")
     else:
         form = LoginForm()
     return render(request, "estoque/login.html", {"form": form})

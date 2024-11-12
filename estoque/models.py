@@ -7,13 +7,6 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.contrib.auth.models import User
 
-from django.contrib.auth.models import User
-from django.db import models
-
-
-
-
-
 class Estabelecimento(models.Model):
     TIPOS_ESTABELECIMENTO = [
         ('Farmacia', 'Farmácia'),
@@ -30,9 +23,12 @@ class Estabelecimento(models.Model):
         return self.nome
     
 class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)
     estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.SET_NULL, null=True, blank=True)
 
+    def __str__(self):
+        return f'{self.user.username} - {self.estabelecimento if self.estabelecimento else "Sem Estabelecimento"}'
+    
 class Departamento(models.Model):
     nome = models.CharField(max_length=100)
 
@@ -121,6 +117,7 @@ class EntradaEstoque(models.Model):
     numero_documento = models.CharField(max_length=50, default="0000", verbose_name="Número do Documento")
     valor_total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     observacao = models.CharField(max_length=100, blank=True, null=True, verbose_name="Observação")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Substituir operador por user
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -173,8 +170,7 @@ class DetalhesMedicamento(models.Model):
     def __str__(self):
         return f'{self.lote} - {self.medicamento.nome} - {self.quantidade}'
 
-
-    
+   
 class Medico(models.Model):
     ESTADOS_CHOICES = [
         ('AC', 'Acre'),

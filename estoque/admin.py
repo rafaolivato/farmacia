@@ -45,3 +45,12 @@ class DispensacaoAdmin(admin.ModelAdmin):
 class DispensacaoMedicamentoAdmin(admin.ModelAdmin):
     list_display = ['dispensacao', 'medicamento', 'quantidade']
     search_fields = ['medicamento__nome', 'dispensacao__paciente']
+
+# admin.py
+from django.contrib import admin
+from .models import Profile
+
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'estabelecimento')
+    list_filter = ('estabelecimento',)

@@ -10,7 +10,8 @@ from .views import lista_requisicoes, RequisicaoDetailView, aprovar_requisicao, 
 
 urlpatterns = [
     path("", views.base, name="base"),
-    path('login/', auth_views.LoginView.as_view(template_name='estoque/login.html', redirect_authenticated_user=True, next_page='base'), name='login'),
+    path('login/', auth_views.LoginView.as_view(template_name='estoque/login.html', redirect_authenticated_user=True), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     path("novo_paciente/", views.novo_paciente, name="novo_paciente"),
     path("lista_medicamentos/", views.lista_medicamentos, name="lista_medicamentos"),
     path("lista_pacientes/", views.lista_pacientes, name="lista_pacientes"),
@@ -34,7 +35,7 @@ urlpatterns = [
     path('cadastrar_medicamento/', views.cadastrar_medicamento, name='cadastrar_medicamento'),
     path('sucesso/',sucesso, name='sucesso'),
     path('accounts/', include('django.contrib.auth.urls')),  
-    path('logout/', LogoutView.as_view(next_page='base'), name='logout'),
+  
     path('saida_estoque/', saida_estoque, name='saida_estoque'),
     path('estoque/dispensacoes/<int:id>/', views.detalhes_dispensacao, name='detalhes_dispensacao'),
     path('distribuicao-sem-requisicao/', views.distribuicao_sem_requisicao, name='distribuicao_sem_requisicao'),
