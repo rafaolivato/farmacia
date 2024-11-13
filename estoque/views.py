@@ -267,7 +267,16 @@ def lista_localizacoes(request):
     )
 
 
-from django.db import transaction
+import logging
+from django.db import transaction, IntegrityError
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
+from .models import EntradaEstoque, Medicamento, Localizacao, Fabricante, DetalhesMedicamento
+
+# Configure o logger
+logger = logging.getLogger(__name__)
 
 @login_required
 def entrada_estoque(request):
@@ -284,36 +293,41 @@ def entrada_estoque(request):
 
     if request.method == 'POST':
         form = EntradaEstoqueForm(request.POST)
-        formset = DetalhesMedicamentoFormSet(request.POST, instance=EntradaEstoque())
-        
+        formset = DetalhesMedicamentoFormSet(request.POST)
+
+        # Log os dados recebidos
+        logger.info("Dados do formulário de entrada de estoque recebidos:")
+        logger.info(form.data)
+        logger.info("Dados do formset de detalhes de medicamentos recebidos:")
+        logger.info(formset.data)
+
         if form.is_valid() and formset.is_valid():
             try:
                 with transaction.atomic():
+                    # Cria a entrada de estoque sem salvar para associar o estabelecimento
                     entrada_estoque = form.save(commit=False)
                     entrada_estoque.estabelecimento = request.user.profile.estabelecimento
                     entrada_estoque.save()
 
-                    # Atribuir o `EntradaEstoque` ao formset e salvar cada `DetalhesMedicamento`
-                    formset.instance = entrada_estoque
-                    formset.save()
-                    
-                    # Adicione lógica para criar/atualizar o estoque aqui, se necessário
+                    # Atribuir o `EntradaEstoque` ao formset antes de salvar
+                    for detalhe_form in formset:
+                        detalhe = detalhe_form.save(commit=False)
+                        detalhe.entrada = entrada_estoque  # Associa cada detalhe à entrada
+                        detalhe.save()
+                        logger.info(f"Salvando detalhe: {detalhe}")
 
+                messages.success(request, "Entrada de estoque salva com sucesso!")
                 return redirect('lista_medicamentos')
             except IntegrityError as e:
-                logger.error(f"Erro de integridade: {e}")
-                return render(request, 'estoque/entrada_estoque.html', {
-                    'form': form,
-                    'formset': formset,
-                    'medicamentos_disponiveis': Medicamento.objects.all(),
-                    'localizacoes_disponiveis': Localizacao.objects.all(),
-                    'fabricantes_disponiveis': Fabricante.objects.all(),
-                    'error_message': 'Ocorreu um erro ao salvar. Verifique os dados e tente novamente.'
-                })
+                logger.error(f"Erro de integridade ao salvar a entrada de estoque: {e}")
+                messages.error(request, "Erro ao salvar entrada de estoque. Verifique os dados.")
         else:
-            logger.error("Form ou formset inválidos")
+            print("Form errors:", form.errors)
+            print("Formset errors:", formset.errors)# Log os erros específicos dos formulários para debug
+            logger.error("Form ou formset inválidos ao validar:")
             logger.error(f"Erros no form: {form.errors}")
             logger.error(f"Erros no formset: {formset.errors}")
+            messages.error(request, "Formulário ou formset inválidos. Verifique os dados.")
 
     else:
         form = EntradaEstoqueForm()
@@ -326,6 +340,8 @@ def entrada_estoque(request):
         'localizacoes_disponiveis': Localizacao.objects.all(),
         'fabricantes_disponiveis': Fabricante.objects.all(),
     })
+
+
 
 @login_required
 def cadastrar_estabelecimento(request):

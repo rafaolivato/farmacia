@@ -120,6 +120,12 @@ from django import forms
 from .models import DetalhesMedicamento, Localizacao, Fabricante
 
 class DetalhesMedicamentoForm(forms.ModelForm):
+    medicamento = forms.ModelChoiceField(
+        queryset=Medicamento.objects.all(),
+        widget=forms.Select(attrs={"class": "form-control form-control-sm"}),
+        required=True,
+        label="Medicamento"
+    )
     localizacao = forms.ModelChoiceField(
         queryset=Localizacao.objects.all(),
         widget=forms.Select(
