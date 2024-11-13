@@ -14,7 +14,8 @@ from .models import (
     SaidaEstoque,
     Dispensacao,
     DistribuicaoMedicamento,
-    Requisicao
+    Requisicao,
+    Estoque
 )
 
 
@@ -267,79 +268,43 @@ def lista_localizacoes(request):
     )
 
 
-import logging
-from django.db import transaction, IntegrityError
-from django.contrib import messages
 from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
-from .models import EntradaEstoque, Medicamento, DetalhesMedicamento
+from .forms import EntradaEstoqueForm  # Certifique-se de importar seu formulário de entrada corretamente
 
-# Configure o logger
-logger = logging.getLogger(__name__)
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
+from .models import Estoque
+from django.db import transaction
 
 @login_required
-def entrada_estoque(request):
-    # Verifique se o usuário possui perfil e estabelecimento associados
-    if not hasattr(request.user, 'profile') or not hasattr(request.user.profile, 'estabelecimento'):
-        return render(request, 'estoque/entrada_estoque.html', {
-            'error_message': 'O perfil do usuário não está associado a um estabelecimento. Entre em contato com o administrador.',
-            'form': EntradaEstoqueForm(),
-            'formset': DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none()),
-        })
+def entrada_estoque_view(request):
+    entrada_form = EntradaEstoqueForm(request.POST or None, user=request.user)
+    detalhes_formset = DetalhesMedicamentoFormSet(request.POST or None)
 
-    if request.method == 'POST':
-        form = EntradaEstoqueForm(request.POST)
-        formset = DetalhesMedicamentoFormSet(request.POST)
+    if entrada_form.is_valid() and detalhes_formset.is_valid():
+        with transaction.atomic():
+            entrada = entrada_form.save(commit=False)
+            entrada.user = request.user
+            entrada.save()
+            
+            for form in detalhes_formset:
+                detalhe = form.save(commit=False)
+                detalhe.entrada = entrada
+                detalhe.save()
+                
+                # Certifique-se de passar o medicamento ao criar ou atualizar Estoque
+                Estoque.objects.get_or_create(
+                    medicamento=detalhe.medicamento,
+                    estabelecimento=entrada.estabelecimento,
+                    defaults={'quantidade': detalhe.quantidade}
+                )
 
-        logger.info("Dados do formulário de entrada de estoque recebidos:")
-        logger.info(form.data)
-        logger.info("Dados do formset de detalhes de medicamentos recebidos:")
-        logger.info(formset.data)
-
-        if form.is_valid() and formset.is_valid():
-            try:
-                with transaction.atomic():
-                    # Cria a entrada de estoque sem salvar para associar o estabelecimento
-                    entrada_estoque = form.save(commit=False)
-                    entrada_estoque.estabelecimento = request.user.profile.estabelecimento
-                    entrada_estoque.user = request.user
-                    entrada_estoque.save()
-
-                    for detalhe_form in formset:
-                        if detalhe_form.is_valid():
-                            detalhe = detalhe_form.save(commit=False)
-                            if detalhe.medicamento:
-                                detalhe.entrada_estoque = entrada_estoque
-                                detalhe.save()
-                                logger.info(f"Salvando detalhe: {detalhe}")
-                            else:
-                                logger.error("Erro: o campo 'medicamento' está vazio em um dos formulários do formset.")
-                                messages.error(request, "Erro: todos os medicamentos devem ser selecionados.")
-                        else:
-                            logger.error(f"Erro de validação no formset: {detalhe_form.errors}")
-                            messages.error(request, "Erro ao validar os detalhes do medicamento. Verifique os dados.")
-
-                messages.success(request, "Entrada de estoque salva com sucesso!")
-                return redirect('lista_medicamentos')
-            except IntegrityError as e:
-                logger.error(f"Erro de integridade ao salvar a entrada de estoque: {e}")
-                messages.error(request, "Erro ao salvar entrada de estoque. Verifique os dados.")
-        else:
-            logger.error("Form ou formset inválidos ao validar:")
-            logger.error(f"Erros no form: {form.errors}")
-            logger.error(f"Erros no formset: {formset.errors}")
-            messages.error(request, "Formulário ou formset inválidos. Verifique os dados.")
-
-    else:
-        form = EntradaEstoqueForm()
-        formset = DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none())
-
+        return redirect('alguma_view')
     return render(request, 'estoque/entrada_estoque.html', {
-        'form': form,
-        'formset': formset,
+        'entrada_form': entrada_form,
+        'detalhes_formset': detalhes_formset,
     })
-
 
 
 

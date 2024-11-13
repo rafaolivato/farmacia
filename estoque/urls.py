@@ -19,7 +19,7 @@ urlpatterns = [
     path('cadastro_fabricante/', views.cadastro_fabricante, name='cadastro_fabricante'),
     path('cadastrar_medicamento/', views.cadastrar_medicamento, name ='cadastrar_medicamento'),
     path('sucesso/', views.sucesso, name='sucesso'), 
-    path('entrada_estoque/', views.entrada_estoque, name='entrada_estoque'),
+    path('entrada_estoque/', views.entrada_estoque_view, name='entrada_estoque'),
     path('cadastrar_localizacao/', views.cadastrar_localizacao, name ='cadastrar_localizacao'),
     path('lista_localizacoes/', views.lista_localizacoes, name='lista_localizacoes'),
     path('cadastrar_estabelecimento/', views.cadastrar_estabelecimento, name='cadastrar_estabelecimento'),
@@ -35,7 +35,6 @@ urlpatterns = [
     path('cadastrar_medicamento/', views.cadastrar_medicamento, name='cadastrar_medicamento'),
     path('sucesso/',sucesso, name='sucesso'),
     path('accounts/', include('django.contrib.auth.urls')),  
-  
     path('saida_estoque/', saida_estoque, name='saida_estoque'),
     path('estoque/dispensacoes/<int:id>/', views.detalhes_dispensacao, name='detalhes_dispensacao'),
     path('distribuicao-sem-requisicao/', views.distribuicao_sem_requisicao, name='distribuicao_sem_requisicao'),
@@ -52,7 +51,7 @@ urlpatterns = [
     path('requisicao/<int:requisicao_id>/aprovar/', aprovar_requisicao, name='aprovar_requisicao'),
     path('requisicao/<int:requisicao_id>/rejeitar/', rejeitar_requisicao, name='rejeitar_requisicao'),
     path('requisicao/<int:requisicao_id>/confirmar-transferencia/', confirmar_transferencia, name='confirmar_transferencia'),
-
+    
 ]
 
 

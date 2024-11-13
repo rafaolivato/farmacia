@@ -126,13 +126,14 @@ class EntradaEstoque(models.Model):
         return f"{self.get_tipo_display()} de medicamentos"
     
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        # Atualizar ou criar o estoque para o medicamento no estabelecimento
+    # Adicione o campo medicamento corretamente ao chamar get_or_create
         estoque, created = Estoque.objects.get_or_create(
-            estabelecimento=self.estabelecimento,  # Adicione o campo 'estabelecimento' ao model EntradaEstoque
-            
-            
-        )
+        medicamento=self.medicamento,  # Certifique-se de que 'medicamento' está presente e é passado corretamente
+        estabelecimento=self.estabelecimento,
+        defaults={'quantidade': self.quantidade}  # Outros campos que podem ser necessários
+    )
+        super().save(*args, **kwargs)
+
         if not created:
             estoque.quantidade += self.quantidade
             estoque.save()

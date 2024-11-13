@@ -67,134 +67,53 @@ from django import forms
 from .models import EntradaEstoque
 
 class EntradaEstoqueForm(forms.ModelForm):
-    valor_total = forms.DecimalField(
-        widget=forms.TextInput(
-            attrs={
-                "type": "number",
-                "step": "0.01",
-                "placeholder": "0.00",
-                "class": "form-control form-control-sm",
-            }
-        ),
-        max_digits=10,
-        decimal_places=2,
-    )
-
     class Meta:
         model = EntradaEstoque
-        # Use exclude para garantir que 'estabelecimento' e 'user' não apareçam
-        exclude = ["estabelecimento", "user"]
-        widgets = {
-            "data": forms.DateInput(
-                format="%d/%m/%Y",
-                attrs={
-                    "placeholder": "DD/MM/AAAA",
-                    "class": "form-control form-control-sm",
-                },
-            ),
-            "data_recebimento": forms.DateInput(
-                format="%d/%m/%Y",
-                attrs={
-                    "placeholder": "DD/MM/AAAA",
-                    "class": "form-control form-control-sm",
-                },
-            ),
-            "numero_documento": forms.TextInput(
-                attrs={
-                    "placeholder": "Número do Documento",
-                    "class": "form-control form-control-sm",
-                }
-            ),
-            "observacao": forms.TextInput(
-                attrs={
-                    "placeholder": "Observação",
-                    "class": "form-control form-control-sm",
-                }
-            ),
-        }
+        fields = ['tipo', 'data', 'data_recebimento', 'fornecedor', 'tipo_documento', 'numero_documento', 'valor_total', 'observacao']
+
 
     def __init__(self, *args, **kwargs):
-        super(EntradaEstoqueForm, self).__init__(*args, **kwargs)
-        # Exibir valores iniciais no log para verificação
-        print("EntradaEstoqueForm - Valores Iniciais:", self.initial)
+        user = kwargs.pop('user', None)  # Retira 'user' de kwargs
+        super().__init__(*args, **kwargs)
+        
+        if user and user.profile.estabelecimento:
+            self.instance.estabelecimento = user.profile.estabelecimento
+
 
 from django import forms
-from .models import DetalhesMedicamento, Localizacao, Fabricante
+from .models import DetalhesMedicamento, Estoque, Medicamento, Fabricante, Localizacao
+from django.forms import modelformset_factory
 
+# Formulário para DetalhesMedicamento
 class DetalhesMedicamentoForm(forms.ModelForm):
     medicamento = forms.ModelChoiceField(
         queryset=Medicamento.objects.all(),
-        widget=forms.Select(attrs={"class": "form-control form-control-sm"}),
         required=True,
         label="Medicamento"
     )
-    localizacao = forms.ModelChoiceField(
-        queryset=Localizacao.objects.all(),
-        widget=forms.Select(
-            attrs={
-                "class": "form-control form-control-sm wider-placeholder",
-                "placeholder": "Selecione a localização",
-                "style": "width: 50%;",  # Ajusta a largura do campo
-            }
-        ),
-        required=False,
-        label="Localização"
-    )
     fabricante = forms.ModelChoiceField(
         queryset=Fabricante.objects.all(),
-        widget=forms.Select(
-            attrs={
-                "class": "form-control form-control-sm",
-                "placeholder": "Selecione um fabricante",
-            }
-        ),
-        required=False,
+        required=True,
         label="Fabricante"
+    )
+    localizacao = forms.ModelChoiceField(
+        queryset=Localizacao.objects.all(),
+        required=True,
+        label="Localização"
     )
 
     class Meta:
         model = DetalhesMedicamento
-        fields = "__all__"
-        widgets = {
-            "validade": forms.DateInput(
-                format="%d/%m/%Y",
-                attrs={
-                    "placeholder": "DD/MM/AAAA",
-                    "class": "form-control form-control-sm",
-                },
-            ),
-            "lote": forms.TextInput(
-                attrs={
-                    "placeholder": "Lote",
-                    "class": "form-control form-control-sm",
-                }
-            ),
-            "valor": forms.NumberInput(
-                attrs={
-                    "placeholder": "0.00",
-                    "class": "form-control form-control-sm",
-                    "step": "0.01",
-                }
-            ),
-        }
+        fields = ['medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante']
 
-    # Método init para depurar e verificar dados iniciais
-    def __init__(self, *args, **kwargs):
-        super(DetalhesMedicamentoForm, self).__init__(*args, **kwargs)
-        # Exibir valores iniciais no log para verificação
-        print("DetalhesMedicamentoForm - Valores Iniciais:", self.initial)
-
-from django.forms import inlineformset_factory
-from .models import EntradaEstoque, DetalhesMedicamento
-
-# Definição do FormSet para DetalhesMedicamento
-DetalhesMedicamentoFormSet = inlineformset_factory(
-    EntradaEstoque,
+# FormSet para DetalhesMedicamento
+DetalhesMedicamentoFormSet = modelformset_factory(
     DetalhesMedicamento,
-    form=DetalhesMedicamentoForm,  # Certifique-se de que DetalhesMedicamentoForm está definido antes
-    extra=1,
-    can_delete=True
+    form=DetalhesMedicamentoForm,
+    extra=1
 )
+
+
 
 
 class EstabelecimentoForm(forms.ModelForm):
