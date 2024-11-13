@@ -273,7 +273,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
-from .models import EntradaEstoque, Medicamento, Localizacao, Fabricante, DetalhesMedicamento
+from .models import EntradaEstoque, Medicamento, DetalhesMedicamento
 
 # Configure o logger
 logger = logging.getLogger(__name__)
@@ -286,16 +286,12 @@ def entrada_estoque(request):
             'error_message': 'O perfil do usuário não está associado a um estabelecimento. Entre em contato com o administrador.',
             'form': EntradaEstoqueForm(),
             'formset': DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none()),
-            'medicamentos_disponiveis': Medicamento.objects.all(),
-            'localizacoes_disponiveis': Localizacao.objects.all(),
-            'fabricantes_disponiveis': Fabricante.objects.all(),
         })
 
     if request.method == 'POST':
         form = EntradaEstoqueForm(request.POST)
         formset = DetalhesMedicamentoFormSet(request.POST)
 
-        # Log os dados recebidos
         logger.info("Dados do formulário de entrada de estoque recebidos:")
         logger.info(form.data)
         logger.info("Dados do formset de detalhes de medicamentos recebidos:")
@@ -307,14 +303,22 @@ def entrada_estoque(request):
                     # Cria a entrada de estoque sem salvar para associar o estabelecimento
                     entrada_estoque = form.save(commit=False)
                     entrada_estoque.estabelecimento = request.user.profile.estabelecimento
+                    entrada_estoque.user = request.user
                     entrada_estoque.save()
 
-                    # Atribuir o `EntradaEstoque` ao formset antes de salvar
                     for detalhe_form in formset:
-                        detalhe = detalhe_form.save(commit=False)
-                        detalhe.entrada = entrada_estoque  # Associa cada detalhe à entrada
-                        detalhe.save()
-                        logger.info(f"Salvando detalhe: {detalhe}")
+                        if detalhe_form.is_valid():
+                            detalhe = detalhe_form.save(commit=False)
+                            if detalhe.medicamento:
+                                detalhe.entrada_estoque = entrada_estoque
+                                detalhe.save()
+                                logger.info(f"Salvando detalhe: {detalhe}")
+                            else:
+                                logger.error("Erro: o campo 'medicamento' está vazio em um dos formulários do formset.")
+                                messages.error(request, "Erro: todos os medicamentos devem ser selecionados.")
+                        else:
+                            logger.error(f"Erro de validação no formset: {detalhe_form.errors}")
+                            messages.error(request, "Erro ao validar os detalhes do medicamento. Verifique os dados.")
 
                 messages.success(request, "Entrada de estoque salva com sucesso!")
                 return redirect('lista_medicamentos')
@@ -322,8 +326,6 @@ def entrada_estoque(request):
                 logger.error(f"Erro de integridade ao salvar a entrada de estoque: {e}")
                 messages.error(request, "Erro ao salvar entrada de estoque. Verifique os dados.")
         else:
-            print("Form errors:", form.errors)
-            print("Formset errors:", formset.errors)# Log os erros específicos dos formulários para debug
             logger.error("Form ou formset inválidos ao validar:")
             logger.error(f"Erros no form: {form.errors}")
             logger.error(f"Erros no formset: {formset.errors}")
@@ -336,10 +338,8 @@ def entrada_estoque(request):
     return render(request, 'estoque/entrada_estoque.html', {
         'form': form,
         'formset': formset,
-        'medicamentos_disponiveis': Medicamento.objects.all(),
-        'localizacoes_disponiveis': Localizacao.objects.all(),
-        'fabricantes_disponiveis': Fabricante.objects.all(),
     })
+
 
 
 

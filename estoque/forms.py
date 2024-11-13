@@ -63,6 +63,9 @@ class LoginForm(forms.Form):
     operador = forms.CharField(max_length=100)
     senha = forms.CharField(widget=forms.PasswordInput)
     
+from django import forms
+from .models import EntradaEstoque
+
 class EntradaEstoqueForm(forms.ModelForm):
     valor_total = forms.DecimalField(
         widget=forms.TextInput(
@@ -79,7 +82,8 @@ class EntradaEstoqueForm(forms.ModelForm):
 
     class Meta:
         model = EntradaEstoque
-        fields = "__all__"
+        # Use exclude para garantir que 'estabelecimento' e 'user' não apareçam
+        exclude = ["estabelecimento", "user"]
         widgets = {
             "data": forms.DateInput(
                 format="%d/%m/%Y",
@@ -109,12 +113,10 @@ class EntradaEstoqueForm(forms.ModelForm):
             ),
         }
 
-    # Método init para depurar e verificar dados iniciais
     def __init__(self, *args, **kwargs):
         super(EntradaEstoqueForm, self).__init__(*args, **kwargs)
         # Exibir valores iniciais no log para verificação
         print("EntradaEstoqueForm - Valores Iniciais:", self.initial)
-
 
 from django import forms
 from .models import DetalhesMedicamento, Localizacao, Fabricante
