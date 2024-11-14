@@ -21,7 +21,10 @@ class Estabelecimento(models.Model):
 
     def __str__(self):
         return self.nome
-    
+
+from django.contrib.auth.models import User
+from .models import Estabelecimento 
+
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)
     estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.SET_NULL, null=True, blank=True)
@@ -125,18 +128,7 @@ class EntradaEstoque(models.Model):
     def __str__(self):
         return f"{self.get_tipo_display()} de medicamentos"
     
-    def save(self, *args, **kwargs):
-    # Adicione o campo medicamento corretamente ao chamar get_or_create
-        estoque, created = Estoque.objects.get_or_create(
-        medicamento=self.medicamento,  # Certifique-se de que 'medicamento' está presente e é passado corretamente
-        estabelecimento=self.estabelecimento,
-        defaults={'quantidade': self.quantidade}  # Outros campos que podem ser necessários
-    )
-        super().save(*args, **kwargs)
-
-        if not created:
-            estoque.quantidade += self.quantidade
-            estoque.save()
+     
 
 class Estoque(models.Model):
     estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='estoques')
@@ -148,7 +140,7 @@ class Estoque(models.Model):
 
 class DetalhesMedicamento(models.Model):
     
-    estoque = models.ForeignKey(EntradaEstoque, on_delete=models.CASCADE, related_name='detalhes_medicamentos')
+    estoque = models.ForeignKey(Estoque, on_delete=models.CASCADE)
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField(default=0)
     localizacao = models.CharField(max_length=100, blank=True, null=True, verbose_name=u"Localização")

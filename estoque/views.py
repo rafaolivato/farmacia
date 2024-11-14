@@ -56,68 +56,13 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import DetalhesMedicamento
 
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.contrib.auth.models import User
-from .models import Profile
-
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        Profile.objects.create(user=instance)
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    instance.profile.save()
-
-def register(request):
-    if request.method == 'POST':
-        user_form = UserRegisterForm(request.POST)
-        profile_form = ProfileForm(request.POST)
-        if user_form.is_valid() and profile_form.is_valid():
-            user = user_form.save()
-            profile = profile_form.save(commit=False)
-            profile.user = user
-            profile.save()
-            login(request, user)  # Logar o usuário após o registro
-            return redirect('dashboard')  # Redireciona para a dashboard
-    else:
-        user_form = UserRegisterForm()
-        profile_form = ProfileForm()
-    return render(request, 'estoque/register.html', {'user_form': user_form, 'profile_form': profile_form})
-
-
 # autenticacao/views.py
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 
-@login_required
-def dashboard(request):
-    profile = request.user.profile
-    if profile.estabelecimento:
-        context = {'estabelecimento': profile.estabelecimento}
-        return render(request, 'estoque/base.html', context)
-    else:
-        return redirect('estoque/register')
-
+   
     
-    
-from .models import Estabelecimento
-
-@login_required
-def associar_estabelecimento(request):
-    if request.method == "POST":
-        # Recupera o estabelecimento escolhido
-        estabelecimento_id = request.POST.get("estabelecimento")
-        estabelecimento = Estabelecimento.objects.get(id=estabelecimento_id)
-        # Associa o estabelecimento ao perfil do usuário
-        request.user.profile.estabelecimento = estabelecimento
-        request.user.profile.save()
-        return redirect('estoque/dashboard')  # Redireciona para o dashboard após a associação
-
-    estabelecimentos = Estabelecimento.objects.all()
-    return render(request, 'estoque/associar_estabelecimento.html', {'estabelecimentos': estabelecimentos})
-    
+   
 def lista_medicamentos(request):
     # Data atual
     now = timezone.now()
@@ -268,14 +213,13 @@ def lista_localizacoes(request):
     )
 
 
-from django.shortcuts import render, redirect
-from .forms import EntradaEstoqueForm  # Certifique-se de importar seu formulário de entrada corretamente
+# estoque/views.py
 
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
-from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
-from .models import Estoque
 from django.db import transaction
+from django.contrib.auth.decorators import login_required
+from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
+from .models import Estoque, EntradaEstoque
 
 @login_required
 def entrada_estoque_view(request):
@@ -291,20 +235,25 @@ def entrada_estoque_view(request):
             for form in detalhes_formset:
                 detalhe = form.save(commit=False)
                 detalhe.entrada = entrada
-                detalhe.save()
-                
-                # Certifique-se de passar o medicamento ao criar ou atualizar Estoque
-                Estoque.objects.get_or_create(
+
+                # Certifique-se de que o estoque exista antes de associar ao detalhe
+                estoque, created = Estoque.objects.get_or_create(
                     medicamento=detalhe.medicamento,
                     estabelecimento=entrada.estabelecimento,
                     defaults={'quantidade': detalhe.quantidade}
                 )
 
-        return redirect('alguma_view')
+                # Associe o estoque ao detalhe e salve
+                detalhe.estoque = estoque
+                detalhe.save()
+
+        return redirect('sucesso')
+
     return render(request, 'estoque/entrada_estoque.html', {
         'entrada_form': entrada_form,
         'detalhes_formset': detalhes_formset,
     })
+
 
 
 

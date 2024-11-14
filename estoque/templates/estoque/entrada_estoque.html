@@ -28,21 +28,17 @@
     const addButton = document.getElementById('adicionar-medicamento');
     
     addButton.addEventListener('click', function() {
-        // Adiciona um novo formulário ao formset
         const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
         const formCount = parseInt(totalForms.value);
         
-        // Clona o último formulário de medicamento
         const newForm = formset.querySelector('.form-row').cloneNode(true);
         
-        // Atualiza os índices dos campos
         const fields = newForm.querySelectorAll('input, select');
         fields.forEach(field => {
             const name = field.name.replace(/-\d+-/, `-${formCount}-`);
             field.name = name;
             field.id = name;
             
-            // Limpa valores ao clonar, incluindo o valor selecionado do <select>
             if (field.tagName === "SELECT") {
                 field.selectedIndex = 0;
             } else if (field.type !== "hidden") {
