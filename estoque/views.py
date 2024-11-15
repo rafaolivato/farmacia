@@ -34,6 +34,7 @@ from .forms import (
     MedicoForm,
     DispensacaoForm,
     DispensacaoMedicamentoFormSet,
+    LoginForm,
     
 )
 from django.db.models import Sum
@@ -60,7 +61,8 @@ from .models import DetalhesMedicamento
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 
-   
+def base(request):
+    return render(request, "estoque/base.html")  
     
    
 def lista_medicamentos(request):
@@ -212,47 +214,53 @@ def lista_localizacoes(request):
         request, "estoque/lista_localizacoes.html", {"localizacoes": localizacoes}
     )
 
-
-# estoque/views.py
-
 from django.shortcuts import render, redirect
 from django.db import transaction
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
-from .models import Estoque, EntradaEstoque
+from .models import Estoque, EntradaEstoque, DetalhesMedicamento
 
 @login_required
 def entrada_estoque_view(request):
-    entrada_form = EntradaEstoqueForm(request.POST or None, user=request.user)
-    detalhes_formset = DetalhesMedicamentoFormSet(request.POST or None)
+    if request.method == 'POST':
+        entrada_form = EntradaEstoqueForm(request.POST, user=request.user)
+        detalhes_formset = DetalhesMedicamentoFormSet(request.POST)
 
-    if entrada_form.is_valid() and detalhes_formset.is_valid():
-        with transaction.atomic():
-            entrada = entrada_form.save(commit=False)
-            entrada.user = request.user
-            entrada.save()
-            
-            for form in detalhes_formset:
-                detalhe = form.save(commit=False)
-                detalhe.entrada = entrada
+        if entrada_form.is_valid() and detalhes_formset.is_valid():
+            with transaction.atomic():
+                entrada = entrada_form.save(commit=False)
+                entrada.user = request.user
+                entrada.save()
 
-                # Certifique-se de que o estoque exista antes de associar ao detalhe
-                estoque, created = Estoque.objects.get_or_create(
-                    medicamento=detalhe.medicamento,
-                    estabelecimento=entrada.estabelecimento,
-                    defaults={'quantidade': detalhe.quantidade}
-                )
+                for form in detalhes_formset:
+                    detalhe = form.save(commit=False)
+                    detalhe.entrada = entrada
 
-                # Associe o estoque ao detalhe e salve
-                detalhe.estoque = estoque
-                detalhe.save()
+                    # Certifique-se de que o estoque exista antes de associar ao detalhe
+                    estoque, created = Estoque.objects.get_or_create(
+                        medicamento=detalhe.medicamento,
+                        estabelecimento=entrada.estabelecimento,
+                        defaults={'quantidade': detalhe.quantidade}
+                    )
 
-        return redirect('sucesso')
+                    # Associe o estoque ao detalhe e salve
+                    detalhe.estoque = estoque
+                    detalhe.save()
+
+                messages.success(request, 'Entrada de medicamentos concluída com sucesso.')
+                return redirect('sucesso')
+
+    else:
+        entrada_form = EntradaEstoqueForm(user=request.user)
+        # Passa um queryset vazio para o FormSet
+        detalhes_formset = DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none())
 
     return render(request, 'estoque/entrada_estoque.html', {
         'entrada_form': entrada_form,
         'detalhes_formset': detalhes_formset,
     })
+
 
 
 
@@ -325,8 +333,13 @@ def login_view(request):
     return render(request, "estoque/login.html", {"form": form})
 
 
-def base(request):
-    return render(request, "estoque/base.html")
+from django.contrib.auth.views import LogoutView
+from django.shortcuts import redirect
+
+class CustomLogoutView(LogoutView):
+    def get_next_page(self):
+        return '/'  # Redirecione para a página desejada
+
 
 
 @login_required
@@ -415,58 +428,44 @@ def lotes_por_medicamento(request, medicamento_id):
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
 
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.contrib import messages
-from django.http import JsonResponse
-from .models import DetalhesMedicamento, SaidaEstoque, Medicamento, Departamento
-from .forms import SaidaEstoqueForm
-from datetime import date
-from django.db.models import F
 
+from django.shortcuts import render
+from django.forms import modelformset_factory
+from .models import DetalhesMedicamento, Medicamento, Estoque
+from django.contrib.auth.decorators import login_required
 
 @login_required
-@transaction.atomic
 def saida_estoque(request):
-    if request.method == "POST":
-        form = SaidaEstoqueForm(request.POST)
-        if form.is_valid():
-            # Itera sobre os medicamentos adicionados dinamicamente
-            for i in range(len(request.POST.getlist("medicamento"))):
-                medicamento = Medicamento.objects.get(id=request.POST.getlist("medicamento")[i])
-                quantidade = int(request.POST.getlist("quantidade")[i])
-                lote = DetalhesMedicamento.objects.get(id=request.POST.getlist("lote")[i])
-                departamento = form.cleaned_data["departamento"]
+    # Obter o estabelecimento do usuário logado
+    estabelecimento = request.user.profile.estabelecimento
+    
+    # Filtrar medicamentos disponíveis no estoque do estabelecimento
+    medicamentos_disponiveis = DetalhesMedicamento.objects.filter(
+        estoque__estabelecimento=estabelecimento,
+        quantidade__gt=0  # Apenas medicamentos com quantidade maior que zero
+    )
+    
+    # FormSet para os medicamentos disponíveis
+    DetalhesMedicamentoFormSet = modelformset_factory(
+        DetalhesMedicamento,
+        form=DetalhesMedicamentoForm,  # O formulário que você já tem
+        fields=['medicamento', 'quantidade', 'lote'],  # Exibindo apenas os campos desejados
+        extra=1,  # Garante que pelo menos um formulário vazio apareça
+        can_delete=True  # Habilita exclusão de itens no FormSet
+    )
 
-                if not isinstance(lote, DetalhesMedicamento):
-                    messages.error(request, "O lote selecionado não é válido. Por favor, tente novamente.")
-                    return redirect("saida_estoque")
-
-                if lote.quantidade >= quantidade:
-                    lote.quantidade = F("quantidade") - quantidade
-                    lote.save()
-                    lote.refresh_from_db()
-                    saida = SaidaEstoque(
-                        user=request.user.username,
-                        medicamento=medicamento,
-                        lote=lote,
-                        quantidade=quantidade,
-                        departamento=departamento,
-                        data_atendimento=date.today(),
-                    )
-                    saida.save()
-                else:
-                    messages.error(request, f"Quantidade insuficiente no lote selecionado ({lote.lote}). Quantidade disponível: {lote.quantidade}")
-                    
-            messages.success(request, "Saída de estoque realizada com sucesso!")
-            return redirect("saida_estoque")
-        else:
-            messages.error(request, "Erro ao validar o formulário. Por favor, revise os dados inseridos.")
+    if request.method == 'POST':
+        formset = DetalhesMedicamentoFormSet(request.POST)
+        if formset.is_valid():
+            formset.save()  # Salvar os detalhes do medicamento
+            return redirect('sucesso')  # Redirecionar para uma página de sucesso após salvar
     else:
-        form = SaidaEstoqueForm()
+        formset = DetalhesMedicamentoFormSet(queryset=medicamentos_disponiveis)
 
-    return render(request, "estoque/saida_estoque.html", {"form": form})
+    return render(request, 'estoque/saida_estoque.html', {'formset': formset})
+
+
+
 
 
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import  Distribuicao,Estoque, DistribuicaoMedicamento,SaidaEstoque,Departamento,Dispensacao, DispensacaoMedicamento,Medicamento, EntradaEstoque, Paciente, Fornecedor, DetalhesMedicamento, Estabelecimento, Fabricante
+from .models import  Distribuicao,Estoque,Localizacao, DistribuicaoMedicamento,SaidaEstoque,Departamento,Dispensacao, DispensacaoMedicamento,Medicamento, EntradaEstoque, Paciente, Fornecedor, DetalhesMedicamento, Estabelecimento, Fabricante
 
 class DistribuicaoMedicamentoInline(admin.TabularInline):
     model = DistribuicaoMedicamento
@@ -23,6 +23,7 @@ admin.site.register(SaidaEstoque)
 admin.site.register(Distribuicao, DistribuicaoAdmin)
 admin.site.register(DistribuicaoMedicamento)
 admin.site.register(Estoque)
+admin.site.register(Localizacao)
 
 
 # Crie um Inline para DispensacaoMedicamento

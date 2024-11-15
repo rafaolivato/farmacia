@@ -7,6 +7,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
 from .views import nova_requisicao, consultar_requisicoes, atender_requisicao
 from .views import lista_requisicoes, RequisicaoDetailView, aprovar_requisicao, rejeitar_requisicao, confirmar_transferencia, criar_requisicao, atender_requisicao, consultar_requisicoes, distribuicao_sem_requisicao
+from .views import CustomLogoutView
 
 urlpatterns = [
     path("", views.base, name="base"),
@@ -51,7 +52,9 @@ urlpatterns = [
     path('requisicao/<int:requisicao_id>/aprovar/', aprovar_requisicao, name='aprovar_requisicao'),
     path('requisicao/<int:requisicao_id>/rejeitar/', rejeitar_requisicao, name='rejeitar_requisicao'),
     path('requisicao/<int:requisicao_id>/confirmar-transferencia/', confirmar_transferencia, name='confirmar_transferencia'),
-    
+    path('logout/', CustomLogoutView.as_view(), name='logout'),
+
+
 ]
 
 

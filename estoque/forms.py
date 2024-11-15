@@ -105,16 +105,21 @@ class DetalhesMedicamentoForm(forms.ModelForm):
     class Meta:
         model = DetalhesMedicamento
         fields = ['medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante']
+        widgets = {
+            'medicamento': forms.Select(attrs={'class': 'form-control select2'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+            'lote': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+            'localizacao': forms.Select(attrs={'class': 'form-control select2'}),
+            'fabricante': forms.Select(attrs={'class': 'form-control select2'})
+        }
 
 # FormSet para DetalhesMedicamento
 DetalhesMedicamentoFormSet = modelformset_factory(
     DetalhesMedicamento,
-    form=DetalhesMedicamentoForm,
-    extra=1
+    fields=('medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante'),
+    extra=1,  # Garante que pelo menos um formulário vazio apareça
+    can_delete=True  # Habilita exclusão de itens no FormSet
 )
-
-
-
 
 class EstabelecimentoForm(forms.ModelForm):
     class Meta:

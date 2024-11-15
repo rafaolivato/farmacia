@@ -90,10 +90,10 @@ class Medicamento(models.Model):
 
 class EntradaEstoque(models.Model):
     TIPO_MOVIMENTACAO_CHOICES = (
+        ("pregao", "Pregão"),
         ("ajuste_estoque", "Ajuste de Estoque"),
         ("doacao", "Doação"),
         ("entrada_ordinaria", "Entrada Ordinária"),
-        ("pregao", "Pregão"),
         ("saldo_implantacao", "Saldo de Implantação"),
     )
 
@@ -118,7 +118,7 @@ class EntradaEstoque(models.Model):
     fornecedor = models.ForeignKey('Fornecedor', on_delete=models.CASCADE, null=True)
     tipo_documento = models.CharField(max_length=50, default="Nota Fiscal")
     numero_documento = models.CharField(max_length=50, default="0000", verbose_name="Número do Documento")
-    valor_total = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    valor_total = models.DecimalField(max_digits=10, decimal_places=2, default=00.00)
     observacao = models.CharField(max_length=100, blank=True, null=True, verbose_name="Observação")
     user = models.ForeignKey(User, on_delete=models.CASCADE)  # Substituir operador por user
 
@@ -143,12 +143,12 @@ class DetalhesMedicamento(models.Model):
     estoque = models.ForeignKey(Estoque, on_delete=models.CASCADE)
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField(default=0)
-    localizacao = models.CharField(max_length=100, blank=True, null=True, verbose_name=u"Localização")
     validade = models.DateField(blank=True, null=True)
     lote = models.CharField(max_length=50, blank=True, null=True)
     valor = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="Valor Unitário")
-    fabricante = models.CharField(max_length=100, blank=True, null=True)
-
+    localizacao = models.ForeignKey(Localizacao, on_delete=models.SET_NULL, null=True, blank=True,verbose_name=u"Localização")
+    fabricante = models.ForeignKey(Fabricante, on_delete=models.SET_NULL, null=True, blank=True)
+    estabelecimento = models.ForeignKey('Estabelecimento', on_delete=models.CASCADE)
     def save(self, *args, **kwargs):
         # Verificar se já existe um registro com o mesmo medicamento e lote
         if not self.pk:  # Se for um novo registro
