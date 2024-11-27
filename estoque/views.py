@@ -65,17 +65,25 @@ def base(request):
     return render(request, "estoque/base.html")  
     
    
+from django.db.models import Sum, F
+from django.utils import timezone
+from datetime import timedelta
+from django.contrib.auth.decorators import login_required
+
+@login_required
 def lista_medicamentos(request):
     # Data atual
     now = timezone.now()
     # Data 3 meses à frente
     now_plus_3_months = (now + timedelta(days=90)).date()
 
-    # Query para obter detalhes dos medicamentos com cálculo do valor total
+    # Obter o estabelecimento do usuário logado
+    estabelecimento = request.user.profile.estabelecimento
+
+    # Filtrar os medicamentos do estabelecimento
     detalhes_medicamentos = (
-        DetalhesMedicamento.objects.values(
-            "medicamento__id", "medicamento__nome", "localizacao", "validade", "lote"
-        )
+        DetalhesMedicamento.objects.filter(estoque__estabelecimento=estabelecimento)
+        .values("medicamento__id", "medicamento__nome", "localizacao", "validade", "lote")
         .annotate(
             total_quantidade=Sum("quantidade"),
             total_valor=Sum(F("quantidade") * F("valor"))
@@ -91,6 +99,7 @@ def lista_medicamentos(request):
             "now_plus_3_months": now_plus_3_months,
         },
     )
+
 
 def lista_pacientes(request):
     pacientes = Paciente.objects.all()
@@ -229,22 +238,30 @@ def entrada_estoque_view(request):
 
         if entrada_form.is_valid() and detalhes_formset.is_valid():
             with transaction.atomic():
+                # Salva a entrada
                 entrada = entrada_form.save(commit=False)
                 entrada.user = request.user
                 entrada.save()
 
+                # Salva os detalhes dos medicamentos
                 for form in detalhes_formset:
                     detalhe = form.save(commit=False)
                     detalhe.entrada = entrada
+                    detalhe.estabelecimento = entrada.estabelecimento  # Associa o estabelecimento à entrada
 
-                    # Certifique-se de que o estoque exista antes de associar ao detalhe
+                    # Verifica ou cria o estoque associado
                     estoque, created = Estoque.objects.get_or_create(
                         medicamento=detalhe.medicamento,
                         estabelecimento=entrada.estabelecimento,
                         defaults={'quantidade': detalhe.quantidade}
                     )
 
-                    # Associe o estoque ao detalhe e salve
+                    # Atualiza a quantidade no estoque
+                    if not created:
+                        estoque.quantidade += detalhe.quantidade
+                        estoque.save()
+
+                    # Associa o estoque ao detalhe e salva
                     detalhe.estoque = estoque
                     detalhe.save()
 
@@ -253,7 +270,6 @@ def entrada_estoque_view(request):
 
     else:
         entrada_form = EntradaEstoqueForm(user=request.user)
-        # Passa um queryset vazio para o FormSet
         detalhes_formset = DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none())
 
     return render(request, 'estoque/entrada_estoque.html', {
@@ -412,12 +428,16 @@ def detalhes_dispensacao(request, id):
 from django.http import JsonResponse
 from .models import DetalhesMedicamento
 
+
 def lotes_por_medicamento(request, medicamento_id):
-    
     if request.method == 'GET':
+        estabelecimento_id = request.GET.get('estabelecimento_id')
         try:
-            # Use a query mais concisa e clara
-            lotes = DetalhesMedicamento.objects.filter(medicamento__id=medicamento_id).values('id', 'lote', 'quantidade')
+            lotes = DetalhesMedicamento.objects.filter(
+                medicamento_id=medicamento_id,
+                estoque__estabelecimento_id=estabelecimento_id,
+                quantidade__gt=0
+            ).values('id', 'lote', 'quantidade')
             
             if lotes:
                 return JsonResponse({'lotes': list(lotes)})
@@ -425,44 +445,52 @@ def lotes_por_medicamento(request, medicamento_id):
                 return JsonResponse({'error': 'Nenhum lote encontrado para o medicamento informado'}, status=404)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
-    return JsonResponse({'error': 'Invalid request method'}, status=400)
+    return JsonResponse({'error': 'Método de requisição inválido'}, status=400)
 
 
 
-from django.shortcuts import render
-from django.forms import modelformset_factory
-from .models import DetalhesMedicamento, Medicamento, Estoque
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.utils import timezone
+from .forms import SaidaEstoqueForm
+from .models import SaidaEstoque, DetalhesMedicamento
 
-@login_required
 def saida_estoque(request):
-    # Obter o estabelecimento do usuário logado
-    estabelecimento = request.user.profile.estabelecimento
+    estabelecimento = request.user.profile.estabelecimento 
     
-    # Filtrar medicamentos disponíveis no estoque do estabelecimento
-    medicamentos_disponiveis = DetalhesMedicamento.objects.filter(
-        estoque__estabelecimento=estabelecimento,
-        quantidade__gt=0  # Apenas medicamentos com quantidade maior que zero
-    )
-    
-    # FormSet para os medicamentos disponíveis
-    DetalhesMedicamentoFormSet = modelformset_factory(
-        DetalhesMedicamento,
-        form=DetalhesMedicamentoForm,  # O formulário que você já tem
-        fields=['medicamento', 'quantidade', 'lote'],  # Exibindo apenas os campos desejados
-        extra=1,  # Garante que pelo menos um formulário vazio apareça
-        can_delete=True  # Habilita exclusão de itens no FormSet
-    )
 
     if request.method == 'POST':
-        formset = DetalhesMedicamentoFormSet(request.POST)
-        if formset.is_valid():
-            formset.save()  # Salvar os detalhes do medicamento
-            return redirect('sucesso')  # Redirecionar para uma página de sucesso após salvar
-    else:
-        formset = DetalhesMedicamentoFormSet(queryset=medicamentos_disponiveis)
+        form = SaidaEstoqueForm(request.POST, estabelecimento=estabelecimento)
+        if form.is_valid():
+            # Preencher a data de atendimento
+            saida = form.save(commit=False)
+            saida.data_atendimento = timezone.now()  # Data de atendimento
+            saida.save()
 
-    return render(request, 'estoque/saida_estoque.html', {'formset': formset})
+            # Atualizar a quantidade do lote no estoque
+            medicamento = form.cleaned_data['medicamento']
+            lote = form.cleaned_data['lote']
+            quantidade = form.cleaned_data['quantidade']
+
+            # Encontrar o lote correspondente
+            detalhes_medicamento = DetalhesMedicamento.objects.get(id=lote.id)
+
+            # Verificar se há quantidade suficiente
+            if detalhes_medicamento.quantidade >= quantidade:
+                # Atualizar a quantidade do lote
+                detalhes_medicamento.quantidade -= quantidade
+                detalhes_medicamento.save()
+            else:
+                # Caso a quantidade seja insuficiente
+                form.add_error('quantidade', 'Estoque insuficiente para esse medicamento.')
+
+            return redirect('sucesso')  # Redireciona para a página de sucesso após salvar
+    else:
+        form = SaidaEstoqueForm()
+
+    return render(request, 'estoque/saida_estoque.html', {'form': form})
+
+
+
 
 
 

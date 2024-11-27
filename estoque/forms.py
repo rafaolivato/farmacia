@@ -237,40 +237,50 @@ class ItemRequisicaoForm(forms.ModelForm):
 
 
 
+
+
 from django import forms
-from .models import SaidaEstoque, DetalhesMedicamento, Medicamento, Departamento
+from .models import SaidaEstoque, Medicamento, DetalhesMedicamento
 
 class SaidaEstoqueForm(forms.ModelForm):
     class Meta:
         model = SaidaEstoque
         fields = ['departamento', 'medicamento', 'quantidade', 'lote']
         widgets = {
-            'departamento': forms.Select(attrs={'id': 'id_departamento', 'name': 'departamento', 'class': 'form-control select2'}),
-            'medicamento': forms.Select(attrs={'id': 'id_medicamento', 'name': 'medicamento', 'class': 'form-control select2'}),
-            'quantidade': forms.NumberInput(attrs={'id': 'id_quantidade', 'name': 'quantidade', 'class': 'form-control'}),
-            'lote': forms.Select(attrs={'id': 'id_lote', 'name': 'lote', 'class': 'form-control select2'}),
+            'departamento': forms.Select(attrs={'class': 'form-control select2'}),
+            'medicamento': forms.Select(attrs={'class': 'form-control select2'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
+            'lote': forms.Select(attrs={'class': 'form-control select2'}),
         }
-    
-    def __init__(self, *args, **kwargs):
-        super(SaidaEstoqueForm, self).__init__(*args, **kwargs)
-        
-        self.fields['departamento'].queryset = Departamento.objects.all()
-        
-        # Inicialmente, o campo `lote` não terá opções, pois será preenchido dinamicamente
-        self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
-        
-        medicamentos_com_estoque = Medicamento.objects.filter(
-            detalhesmedicamento__quantidade__gt=0
-        ).distinct()
-        self.fields['medicamento'].queryset = medicamentos_com_estoque
 
-        # Verifica se já existe um medicamento selecionado para carregar os lotes correspondentes
-        if 'medicamento' in self.data:
-            try:
-                medicamento_id = int(self.data.get('medicamento'))
-                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(medicamento_id=medicamento_id, quantidade__gt=0).order_by('lote')
-            except (ValueError, TypeError):
-                pass
-        elif self.instance.pk:
-            # Se o objeto já existir, filtra o lote com base no medicamento do objeto
-            self.fields['lote'].queryset = self.instance.medicamento.detalhesmedicamento_set.filter(quantidade__gt=0).order_by('lote')
+    def __init__(self, *args, **kwargs):
+        estabelecimento = kwargs.pop('estabelecimento', None)
+        super().__init__(*args, **kwargs)
+        
+        if estabelecimento:
+            # Filtrar os medicamentos disponíveis para o estabelecimento logado
+            self.fields['medicamento'].queryset = Medicamento.objects.filter(
+                detalhesmedicamento__estoque__estabelecimento=estabelecimento,
+                detalhesmedicamento__quantidade__gt=0
+            ).distinct()
+
+            # Lógica para filtrar os lotes conforme o medicamento selecionado
+            if 'medicamento' in self.data:
+                try:
+                    medicamento_id = int(self.data.get('medicamento'))
+                    self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
+                        medicamento_id=medicamento_id,
+                        estoque__estabelecimento=estabelecimento,
+                        quantidade__gt=0
+                    )
+                except (ValueError, TypeError):
+                    self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+            elif self.instance.pk:
+                self.fields['lote'].queryset = self.instance.medicamento.detalhesmedicamento_set.filter(
+                    estoque__estabelecimento=estabelecimento,
+                    quantidade__gt=0
+                )
+        else:
+            self.fields['medicamento'].queryset = Medicamento.objects.none()
+            self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+

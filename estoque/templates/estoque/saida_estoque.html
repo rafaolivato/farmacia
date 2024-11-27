@@ -7,47 +7,58 @@
             <h2 class="logincolor">Saída de Estoque</h2>
         </div>
         <div class="card-body">
-            <!-- Formulário para a saída de estoque -->
             <form method="POST" id="saida-estoque-form">
                 {% csrf_token %}
-                <div id="medicamento-container">
-                    {{ formset.management_form }}
-                    {% for form in formset %}
-                        <div class="form-row">
-                            <!-- Exibindo os campos necessários -->
-                            {{ form.medicamento.label_tag }} {{ form.medicamento }}
-                            {{ form.quantidade.label_tag }} {{ form.quantidade }}
-                            {{ form.lote.label_tag }} {{ form.lote }}
-                        </div>
-                    {% endfor %}
-                </div>
-                <button type="submit" class="btn btn-primary mt-4">Confirmar Retirada</button>
-                <button type="button" class="btn btn-success" id="add-medicamento-btn">Adicionar Medicamento</button>
+                {{ form.as_p }}  <!-- Exibe o formulário com a marcação padrão -->
+                <button type="submit" class="btn btn-primary mt-3">Confirmar Saída</button>
             </form>
         </div>
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>  <!-- jQuery primeiro -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script> <!-- Select2 -->
 <script>
-    $(document).ready(function () {
-        const medicamentoContainer = $('#medicamento-container');
-        const addButton = $('#add-medicamento-btn');
-        let formCount = {{ formset.total_form_count }};
+    <
+    $(document).ready(function() {
+        $('.select2').select2();  // Inicializa o select2 nos campos com a classe select2
+    });
+    // Quando o medicamento for selecionado, carrega os lotes correspondentes
+    document.addEventListener('DOMContentLoaded', function() {
+        const medicamentoField = document.querySelector('select[name="medicamento"]');
+        const loteField = document.querySelector('select[name="lote"]');
+        
+        medicamentoField.addEventListener('change', function() {
+            const medicamentoId = this.value;
 
-        addButton.on('click', function () {
-            const newForm = medicamentoContainer.find('.form-row:first').clone();
-            newForm.find('input, select').each(function () {
-                const name = $(this).attr('name').replace(/-\d+-/, `-${formCount}-`);
-                const id = `id_${name}`;
-                $(this).attr({ name: name, id: id }).val('');
-            });
-
-            formCount++;
-            $('#id_form-TOTAL_FORMS').val(formCount);
-
-            medicamentoContainer.append(newForm);
+            if (medicamentoId) {
+                // Faz a requisição AJAX para pegar os lotes
+                fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.lotes) {
+                            // Limpa os lotes existentes
+                            loteField.innerHTML = '<option value="">Selecione o lote</option>';
+                            // Preenche os lotes com as novas opções
+                            data.lotes.forEach(lote => {
+                                const option = document.createElement('option');
+                                option.value = lote.id;
+                                option.textContent = `${lote.lote} - Quantidade: ${lote.quantidade}`;
+                                loteField.appendChild(option);
+                            });
+                        } else {
+                            loteField.innerHTML = '<option value="">Nenhum lote encontrado</option>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar os lotes:', error);
+                        loteField.innerHTML = '<option value="">Erro ao carregar lotes</option>';
+                    });
+            } else {
+                loteField.innerHTML = '<option value="">Selecione o medicamento</option>';
+            }
         });
     });
 </script>
-
 {% endblock %}
+

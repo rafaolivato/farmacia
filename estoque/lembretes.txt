@@ -1,5 +1,5 @@
-usuario: daiane
-senha :gabriel@21 
+usuario: Andre
+senha : Admin@123 
 
 # Crie o ambiente virtual
 python -m venv venv
