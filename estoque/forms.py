@@ -183,7 +183,7 @@ class UploadExcelForm(forms.Form):
 
 
 from django import forms
-from .models import Distribuicao, DistribuicaoMedicamento, DetalhesMedicamento, Estabelecimento
+from .models import Distribuicao, Estabelecimento
 
 class DistribuicaoForm(forms.ModelForm):
     class Meta:
@@ -193,25 +193,57 @@ class DistribuicaoForm(forms.ModelForm):
             'estabelecimento_destino': forms.Select(attrs={'class': 'form-select'}),
         }
 
+    def __init__(self, *args, estabelecimento_origem=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if estabelecimento_origem:
+            # Excluir o estabelecimento de origem da queryset
+            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.exclude(id=estabelecimento_origem.id)
+        else:
+            # Se não houver estabelecimento de origem, mantém a queryset vazia
+            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.none()
+
+
 from django import forms
-from .models import DistribuicaoMedicamento, Medicamento
+from .models import DistribuicaoMedicamento, Medicamento, DetalhesMedicamento
+
 
 class DistribuicaoMedicamentoForm(forms.ModelForm):
     class Meta:
         model = DistribuicaoMedicamento
-        fields = ['medicamento', 'quantidade']
-        widgets = {
-            'medicamento': forms.Select(attrs={'class': 'form-select'}),
-            'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
-        }
+        fields = ['medicamento', 'lote', 'quantidade']
 
     def __init__(self, *args, **kwargs):
+        estabelecimento_logado = kwargs.pop('estabelecimento_logado', None)
         super().__init__(*args, **kwargs)
-        # Ordenar medicamentos em ordem alfabética
-        self.fields['medicamento'].queryset = Medicamento.objects.all().order_by('nome')
+
+        # Carregar os medicamentos disponíveis
+        if estabelecimento_logado:
+            self.fields['medicamento'].queryset = Medicamento.objects.filter(
+                detalhesmedicamento__estabelecimento=estabelecimento_logado
+            ).distinct()
+
+        # Inicialmente, o lote é vazio e será atualizado dinamicamente no frontend
+        self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+
+        # Atualizar os lotes caso já haja um medicamento selecionado (edição)
+        if 'medicamento' in self.data:
+            try:
+                medicamento_id = int(self.data.get('medicamento'))
+                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
+                    medicamento_id=medicamento_id,
+                    estabelecimento=estabelecimento_logado,
+                    quantidade__gt=0  # Apenas lotes com estoque disponível
+                )
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk and self.instance.medicamento:
+            self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
+                medicamento=self.instance.medicamento,
+                estabelecimento=estabelecimento_logado,
+                quantidade__gt=0
+            )
 
 
-# forms.py
 
 from django import forms
 from .models import Requisicao, ItemRequisicao, Medicamento, Estabelecimento
@@ -245,26 +277,40 @@ from .models import SaidaEstoque, Medicamento, DetalhesMedicamento
 class SaidaEstoqueForm(forms.ModelForm):
     class Meta:
         model = SaidaEstoque
-        fields = ['departamento', 'medicamento', 'quantidade', 'lote']
+        fields = ['departamento', 'medicamento', 'lote', 'quantidade']
         widgets = {
-            'departamento': forms.Select(attrs={'class': 'form-control select2'}),
-            'medicamento': forms.Select(attrs={'class': 'form-control select2'}),
-            'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
-            'lote': forms.Select(attrs={'class': 'form-control select2'}),
+            'medicamento': forms.Select(attrs={
+                'class': 'select2',
+                'id': 'id_medicamento',  # Garante o atributo id
+            }),
+            'lote': forms.Select(attrs={
+                'class': 'select2',
+                'id': 'id_lote',  # Garante o atributo id
+            }),
+            'quantidade': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'id': 'id_quantidade',  # Garante o atributo id
+            }),
+            'departamento': forms.Select(attrs={
+                'class': 'form-control',
+                'id': 'id_departamento',  # Garante o atributo id
+            }),
         }
 
     def __init__(self, *args, **kwargs):
         estabelecimento = kwargs.pop('estabelecimento', None)
         super().__init__(*args, **kwargs)
-        
+
+        # Garante a adição de id e name caso faltem
+        for field_name, field in self.fields.items():
+            field.widget.attrs.setdefault('id', f'id_{field_name}')
+            field.widget.attrs.setdefault('name', field_name)
+
         if estabelecimento:
-            # Filtrar os medicamentos disponíveis para o estabelecimento logado
             self.fields['medicamento'].queryset = Medicamento.objects.filter(
                 detalhesmedicamento__estoque__estabelecimento=estabelecimento,
                 detalhesmedicamento__quantidade__gt=0
             ).distinct()
-
-            # Lógica para filtrar os lotes conforme o medicamento selecionado
             if 'medicamento' in self.data:
                 try:
                     medicamento_id = int(self.data.get('medicamento'))
@@ -283,4 +329,3 @@ class SaidaEstoqueForm(forms.ModelForm):
         else:
             self.fields['medicamento'].queryset = Medicamento.objects.none()
             self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
-

@@ -5,9 +5,9 @@ from django.conf.urls.static import static
 from .views import saida_estoque,sucesso
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
-from .views import nova_requisicao, consultar_requisicoes, atender_requisicao
+from .views import nova_requisicao, consultar_requisicoes, atender_requisicao, lotes_por_medicamento
 from .views import lista_requisicoes, RequisicaoDetailView, aprovar_requisicao, rejeitar_requisicao, confirmar_transferencia, criar_requisicao, atender_requisicao, consultar_requisicoes, distribuicao_sem_requisicao
-from .views import CustomLogoutView
+
 
 urlpatterns = [
     path("", views.base, name="base"),
@@ -27,7 +27,7 @@ urlpatterns = [
     path('lista_estabelecimentos/', views.lista_estabelecimentos, name='lista_estabelecimentos'),
     path('cadastrar_departamento/', views.cadastrar_departamento, name ='cadastrar_departamento'),
     path('lista_departamento/', views.lista_departamento, name='lista_departamento'),
-    path('api/lotes_por_medicamento/<int:medicamento_id>/', views.lotes_por_medicamento, name='lotes_por_medicamento'),
+    path('api/lotes_por_medicamento/<int:medicamento_id>/', lotes_por_medicamento, name='lotes_por_medicamento'),
     path('cadastrar_medico/', views.cadastrar_medico, name='cadastrar_medico'),
     path('dispensacoes/', views.listar_dispensacoes, name='listar_dispensacoes'),
     path('dispensacoes/nova/', views.nova_dispensacao, name='nova_dispensacao'),
@@ -52,7 +52,7 @@ urlpatterns = [
     path('requisicao/<int:requisicao_id>/aprovar/', aprovar_requisicao, name='aprovar_requisicao'),
     path('requisicao/<int:requisicao_id>/rejeitar/', rejeitar_requisicao, name='rejeitar_requisicao'),
     path('requisicao/<int:requisicao_id>/confirmar-transferencia/', confirmar_transferencia, name='confirmar_transferencia'),
-    path('logout/', CustomLogoutView.as_view(), name='logout'),
+    
 
 
 ]

@@ -152,6 +152,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'estoque', 'media')
 
 
 LOGIN_REDIRECT_URL = '/estoque/'
+LOGOUT_REDIRECT_URL = '/login/' 
+
 
 # settings.py
 

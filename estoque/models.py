@@ -291,9 +291,18 @@ class Distribuicao(models.Model):
 class DistribuicaoMedicamento(models.Model):
     distribuicao = models.ForeignKey(Distribuicao, on_delete=models.CASCADE, related_name='medicamentos')
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
+    
+    lote = models.ForeignKey(
+        DetalhesMedicamento,
+        on_delete=models.CASCADE,
+        related_name='distribuicoes_por_lote'  # Nome único para o relacionamento reverso
+    )
+    validade = models.ForeignKey(
+        DetalhesMedicamento,
+        on_delete=models.CASCADE,
+        related_name='distribuicoes_por_validade'  # Nome único para o relacionamento reverso
+    )
     quantidade = models.PositiveIntegerField()
-    lote = models.CharField(max_length=50)
-    validade = models.DateField()
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

@@ -419,3 +419,25 @@ h6 {
   background-color: #0978ee; /* Cor de fundo ao passar o mouse */
   color: #fcfdfd; /* Cor do texto ao passar o mouse */
 }
+
+/* Adiciona esse CSS no arquivo de estilos do seu projeto, ou dentro do <style> no seu template */
+.select2-container .select2-selection--single {
+  height: 40px !important;  /* Ajuste a altura para garantir que o campo se ajusta corretamente */
+  padding-left: 10px !important;  /* Garante que o texto do placeholder não fique cortado */
+  padding-right: 10px !important;  /* Ajuste o padding se necessário */
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 36px !important;  /* Ajuste o alinhamento do texto */
+}
+
+.select2-container--default .select2-selection__arrow {
+  top: 8px !important;  /* Ajuste a posição da seta */
+}
+
+/* Estilo para o campo 'departamento' se não estiver usando o select2 */
+#id_departamento {
+  height: 40px;  /* Ajusta a altura do campo */
+  padding: 10px;  /* Adiciona padding para garantir que o texto não fique cortado */
+  font-size: 16px;  /* Ajusta o tamanho da fonte para melhorar a legibilidade */
+}

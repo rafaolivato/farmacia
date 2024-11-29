@@ -1,81 +1,109 @@
 {% extends 'estoque/base.html' %}
 
 {% block content %}
-    <div class="container">
-        <h2>Distribuição Sem Requisição</h2>
-        <form method="POST">
-            {% csrf_token %}
-            {{ distribuicao_form.as_p }}
-            
-            <h4>Medicamentos</h4>
-            {{ medicamento_formset.management_form }}
-            <table class="table" id="medicamentos-table">
-                <thead>
-                    <tr>
-                        <th>Medicamento</th>
-                        <th>Quantidade</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for form in medicamento_formset %}
-                        <tr class="medicamento-form">
-                            <td>{{ form.medicamento }}{% if form.lote.value %} ({{ form.lote.value }}){% endif %}</td>
-                            <td>{{ form.quantidade }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            
-            <button type="button" class="btn btn-secondary" id="add-medicamento">Adicionar Medicamento</button>
-            <button type="submit" class="btn btn-primary">Distribuir Medicamentos</button>
-            <a href="{% url 'consultar_distribuicoes' %}" class="btn btn-secondary">Consultar Distribuições</a>
-        </form>
+<div class="container">
+    <h2>Distribuição Sem Requisição</h2>
+
+    <!-- Mensagens de sucesso ou erro -->
+    {% if messages %}
+    <div>
+        {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}" role="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
     </div>
+    {% endif %}
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const addMedicamentoButton = document.getElementById('add-medicamento');
-            const medicamentosTable = document.getElementById('medicamentos-table').getElementsByTagName('tbody')[0];
-            const totalFormsInput = document.querySelector('input[name="form-TOTAL_FORMS"]');
+    <form method="POST">
+        {% csrf_token %}
+        {{ distribuicao_form.as_p }}
 
-            if (!addMedicamentoButton) {
-                console.error('Botão de adicionar medicamento não foi encontrado.');
-                return;
-            }
-            if (!medicamentosTable) {
-                console.error('Tabela de medicamentos não foi encontrada.');
-                return;
-            }
-            if (!totalFormsInput) {
-                console.error('Campo TOTAL_FORMS não foi encontrado.');
-                return;
-            }
+        <h4>Medicamentos</h4>
+        {{ medicamento_formset.management_form }}
+        <table class="table" id="medicamentos-table">
+            <thead>
+                <tr>
+                    <th>Medicamento</th>
+                    <th>Lote</th>
+                    <th>Quantidade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for form in medicamento_formset %}
+                <tr class="medicamento-form">
+                    <td>{{ form.medicamento }}</td>
+                    <td>{{ form.lote }}</td>
+                    <td>{{ form.quantidade }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
-            addMedicamentoButton.addEventListener('click', function() {
-                const formCount = parseInt(totalFormsInput.value);
-                const newFormCount = formCount + 1;
-                const newFormHtml = medicamentosTable.querySelector('.medicamento-form').cloneNode(true);
+        <button type="button" class="btn btn-secondary" id="add-medicamento">Adicionar Medicamento</button>
+        <button type="submit" class="btn btn-primary">Distribuir Medicamentos</button>
+        <a href="{% url 'consultar_distribuicoes' %}" class="btn btn-secondary">Consultar Distribuições</a>
+    </form>
+</div>
 
-                if (!newFormHtml) {
-                    console.error('Não foi possível clonar o formulário.');
-                    return;
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.medicamento-form select[name$="-medicamento"]').forEach(function(medicamentoField) {
+            medicamentoField.addEventListener('change', function() {
+                const medicamentoId = this.value;
+                const loteField = this.closest('tr').querySelector('select[name$="-lote"]');
+
+                if (medicamentoId) {
+                    // Buscar os lotes dinamicamente
+                    fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            loteField.innerHTML = '<option value="">---------</option>';
+                            data.forEach(lote => {
+                                const option = document.createElement('option');
+                                option.value = lote.id;
+                                option.textContent = `${lote.codigo} - Quantidade: ${lote.quantidade}`;
+                                loteField.appendChild(option);
+                            });
+                        });
+                } else {
+                    loteField.innerHTML = '<option value="">---------</option>';
                 }
-
-                // Atualiza os atributos dos campos do novo formulário
-                newFormHtml.querySelectorAll('input, select').forEach(function(input) {
-                    const name = input.getAttribute('name').replace(`-${formCount - 1}-`, `-${formCount}-`);
-                    const id = input.getAttribute('id').replace(`-${formCount - 1}-`, `-${formCount}-`);
-                    input.setAttribute('name', name);
-                    input.setAttribute('id', id);
-                    input.value = ''; // Limpa o valor do campo
-                });
-
-                // Adiciona a nova linha do formulário à tabela
-                medicamentosTable.appendChild(newFormHtml);
-
-                // Atualiza o valor do campo TOTAL_FORMS
-                totalFormsInput.value = newFormCount;
             });
         });
-    </script>
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        const addMedicamentoButton = document.getElementById('add-medicamento');
+        const medicamentosTable = document.getElementById('medicamentos-table').getElementsByTagName('tbody')[0];
+        const totalFormsInput = document.querySelector('input[name="form-TOTAL_FORMS"]');
+
+        if (!addMedicamentoButton || !medicamentosTable || !totalFormsInput) {
+            console.error('Erro ao carregar elementos necessários para adicionar medicamentos dinamicamente.');
+            return;
+        }
+
+        addMedicamentoButton.addEventListener('click', function() {
+            const formCount = parseInt(totalFormsInput.value);
+            const newFormCount = formCount + 1;
+
+            // Clonar a última linha do formulário
+            const newFormHtml = medicamentosTable.querySelector('.medicamento-form').cloneNode(true);
+
+            // Atualizar atributos dos campos no novo formulário
+            newFormHtml.querySelectorAll('input, select').forEach(function(input) {
+                const name = input.getAttribute('name').replace(`-${formCount - 1}-`, `-${formCount}-`);
+                const id = input.getAttribute('id').replace(`-${formCount - 1}-`, `-${formCount}-`);
+                input.setAttribute('name', name);
+                input.setAttribute('id', id);
+                input.value = ''; // Limpar o valor do campo
+            });
+
+            // Adicionar a nova linha do formulário à tabela
+            medicamentosTable.appendChild(newFormHtml);
+
+            // Atualizar o total de formulários
+            totalFormsInput.value = newFormCount;
+        });
+    });
+</script>
 {% endblock %}
