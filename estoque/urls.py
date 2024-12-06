@@ -36,7 +36,7 @@ urlpatterns = [
     path('cadastrar_medicamento/', views.cadastrar_medicamento, name='cadastrar_medicamento'),
     path('sucesso/',sucesso, name='sucesso'),
     path('accounts/', include('django.contrib.auth.urls')),  
-    path('saida_estoque/', saida_estoque, name='saida_estoque'),
+    path('saida_estoque/', views.saida_estoque, name='saida_estoque'),
     path('estoque/dispensacoes/<int:id>/', views.detalhes_dispensacao, name='detalhes_dispensacao'),
     path('distribuicao-sem-requisicao/', views.distribuicao_sem_requisicao, name='distribuicao_sem_requisicao'),
     path('distribuicoes/', views.consultar_distribuicoes, name='consultar_distribuicoes'),

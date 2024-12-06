@@ -27,7 +27,7 @@ from .models import Estabelecimento
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, default=1)
-    estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.SET_NULL, null=True, blank=True)
+    estabelecimento = models.ForeignKey('Estabelecimento', on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f'{self.user.username} - {self.estabelecimento if self.estabelecimento else "Sem Estabelecimento"}'
@@ -251,6 +251,13 @@ class DetalheDispensacao(models.Model):
 import uuid
 from django.db import models, transaction
 from django.db.models import F
+from django.utils.timezone import now
+
+
+    
+  # Define automaticamente como o horário atual
+
+
 
 class SaidaEstoque(models.Model):
     STATUS_CHOICES = (
@@ -262,7 +269,7 @@ class SaidaEstoque(models.Model):
     numero_saida = models.CharField(max_length=36, unique=True, blank=True)  # Aumentado para suportar o UUID
     user = models.CharField(max_length=100)
     observacao = models.TextField(blank=True, null=True, verbose_name="Observação")
-    data_atendimento = models.DateField()
+    data_atendimento = models.DateTimeField(default=now)
     departamento = models.ForeignKey('Departamento', on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="INICIAL")
     medicamento = models.ForeignKey('Medicamento', on_delete=models.CASCADE)

@@ -274,58 +274,35 @@ class ItemRequisicaoForm(forms.ModelForm):
 from django import forms
 from .models import SaidaEstoque, Medicamento, DetalhesMedicamento
 
+
+
+from django import forms
+from .models import SaidaEstoque, DetalhesMedicamento, Medicamento
+
 class SaidaEstoqueForm(forms.ModelForm):
     class Meta:
         model = SaidaEstoque
-        fields = ['departamento', 'medicamento', 'lote', 'quantidade']
+        fields = ['medicamento', 'lote', 'quantidade', 'departamento', 'observacao']
         widgets = {
-            'medicamento': forms.Select(attrs={
-                'class': 'select2',
-                'id': 'id_medicamento',  # Garante o atributo id
-            }),
-            'lote': forms.Select(attrs={
-                'class': 'select2',
-                'id': 'id_lote',  # Garante o atributo id
-            }),
-            'quantidade': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'id': 'id_quantidade',  # Garante o atributo id
-            }),
-            'departamento': forms.Select(attrs={
-                'class': 'form-control',
-                'id': 'id_departamento',  # Garante o atributo id
-            }),
+                 
+            'medicamento': forms.Select(attrs={'class': 'form-control', 'id': 'id_medicamento'}),
+            'lote': forms.Select(attrs={'class': 'form-control', 'id': 'id_lote'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'departamento': forms.Select(attrs={'class': 'form-control'}),
+            'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
     def __init__(self, *args, **kwargs):
-        estabelecimento = kwargs.pop('estabelecimento', None)
+        user = kwargs.pop('user', None)  # Pegamos o usuário logado
         super().__init__(*args, **kwargs)
+        if user:
+            # Filtrar medicamentos e lotes pelo estabelecimento do usuário logado
+            estabelecimento = user.profile.estabelecimento
+            medicamentos_ids = DetalhesMedicamento.objects.filter(
+                estabelecimento=estabelecimento
+            ).values_list('medicamento', flat=True).distinct()
 
-        # Garante a adição de id e name caso faltem
-        for field_name, field in self.fields.items():
-            field.widget.attrs.setdefault('id', f'id_{field_name}')
-            field.widget.attrs.setdefault('name', field_name)
-
-        if estabelecimento:
-            self.fields['medicamento'].queryset = Medicamento.objects.filter(
-                detalhesmedicamento__estoque__estabelecimento=estabelecimento,
-                detalhesmedicamento__quantidade__gt=0
-            ).distinct()
-            if 'medicamento' in self.data:
-                try:
-                    medicamento_id = int(self.data.get('medicamento'))
-                    self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
-                        medicamento_id=medicamento_id,
-                        estoque__estabelecimento=estabelecimento,
-                        quantidade__gt=0
-                    )
-                except (ValueError, TypeError):
-                    self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
-            elif self.instance.pk:
-                self.fields['lote'].queryset = self.instance.medicamento.detalhesmedicamento_set.filter(
-                    estoque__estabelecimento=estabelecimento,
-                    quantidade__gt=0
-                )
-        else:
-            self.fields['medicamento'].queryset = Medicamento.objects.none()
-            self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+            self.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_ids)
+            self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
+                estabelecimento=estabelecimento
+            )

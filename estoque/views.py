@@ -428,75 +428,57 @@ def detalhes_dispensacao(request, id):
 from django.http import JsonResponse
 from .models import DetalhesMedicamento
 
-from django.http import JsonResponse
-from .models import DetalhesMedicamento
-
 def lotes_por_medicamento(request, medicamento_id):
-    estabelecimento = request.user.profile.estabelecimento
-    lotes = DetalhesMedicamento.objects.filter(
-        medicamento_id=medicamento_id,
-        estabelecimento=estabelecimento,
-        quantidade__gt=0
-    ).values('id', 'codigo', 'quantidade')
+    lotes = DetalhesMedicamento.objects.filter(medicamento_id=medicamento_id)
+    data = [
+        {"id": lote.id, "codigo": lote.codigo_lote, "quantidade": lote.quantidade_disponivel}
+        for lote in lotes
+    ]
+    return JsonResponse(data, safe=False)
 
-    return JsonResponse(list(lotes), safe=False)
 
 
 
 
 from django.shortcuts import render, redirect
-from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .forms import SaidaEstoqueForm
-from .models import SaidaEstoque, DetalhesMedicamento, Medicamento
+from .models import DetalhesMedicamento, Estoque
+from django.utils.timezone import now
 
+@login_required
 def saida_estoque(request):
-    # Obtém o estabelecimento do perfil do usuário logado
-    estabelecimento = request.user.profile.estabelecimento
-    
-    # Buscar os medicamentos disponíveis para o estabelecimento
-    medicamentos = Medicamento.objects.filter(
-        detalhesmedicamento__estoque__estabelecimento=estabelecimento,
-        detalhesmedicamento__quantidade__gt=0
-    ).distinct()
-
-    # Se o método da requisição for POST
     if request.method == 'POST':
-        form = SaidaEstoqueForm(request.POST, estabelecimento=estabelecimento)
+        form = SaidaEstoqueForm(request.POST, user=request.user)
         if form.is_valid():
-            # Preencher a data de atendimento
             saida = form.save(commit=False)
-            saida.data_atendimento = timezone.now()  # Data de atendimento
+            saida.data_atendimento = now()  # Define a data/hora atual
+            saida.save()
+            saida.user = request.user.username
+            lote = saida.lote
+
+            # Verificar se o lote pertence ao estabelecimento do usuário
+            if lote.estabelecimento != request.user.profile.estabelecimento:
+                messages.error(request, "O lote selecionado não pertence ao seu estabelecimento.")
+                return redirect('saida_estoque')
+
+            # Verificar se há quantidade suficiente no lote
+            if lote.quantidade < saida.quantidade:
+                messages.error(request, "Quantidade insuficiente no lote selecionado.")
+                return redirect('saida_estoque')
+
+            # Atualizar a quantidade no lote e salvar a saída
+            lote.quantidade -= saida.quantidade
+            lote.save()
             saida.save()
 
-            # Atualizar a quantidade do lote no estoque
-            medicamento = form.cleaned_data['medicamento']
-            lote = form.cleaned_data['lote']
-            quantidade = form.cleaned_data['quantidade']
-
-            # Encontrar o lote correspondente
-            detalhes_medicamento = DetalhesMedicamento.objects.get(id=lote.id)
-
-            # Verificar se há quantidade suficiente
-            if detalhes_medicamento.quantidade >= quantidade:
-                # Atualizar a quantidade do lote
-                detalhes_medicamento.quantidade -= quantidade
-                detalhes_medicamento.save()
-            else:
-                # Caso a quantidade seja insuficiente
-                form.add_error('quantidade', 'Estoque insuficiente para esse medicamento.')
-
-            return redirect('sucesso')  # Redireciona para a página de sucesso após salvar
+            messages.success(request, "Saída registrada com sucesso!")
+            return redirect('saida_estoque')
     else:
-        # Inicializa o formulário e passa os medicamentos para o contexto
-        form = SaidaEstoqueForm(estabelecimento=estabelecimento)
+        form = SaidaEstoqueForm(user=request.user)
 
-    # Passa o formulário e a lista de medicamentos para o template
-    return render(request, 'estoque/saida_estoque.html', {
-        'form': form,
-        'medicamentos': medicamentos  # Passando os medicamentos para o template
-    })
-
-
+    return render(request, 'estoque/saida_estoque.html', {'form': form})
 
 
 

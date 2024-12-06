@@ -1,126 +1,44 @@
-{% extends 'estoque/base.html' %}
+{% extends "estoque/base.html" %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="card shadow-lg">
-        <div class="card-header bg-primary text-white text-center">
-            <h2 class="logincolor">Saída de Estoque</h2>
-        </div>
-        <div class="card-body">
-            <form method="POST" id="saida-estoque-form">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label for="id_departamento">Departamento:</label>
-                    {{ form.departamento }}
-                </div>
-                <div class="form-group">
-                    <label for="id_medicamento">Medicamento:</label>
-                    <select name="medicamento" class="select2" id="id_medicamento">
-                        <option value="">---------</option>
-                        {% for medicamento in medicamentos %}
-                            <option value="{{ medicamento.id }}">{{ medicamento.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="id_lote">Lote:</label>
-                    <select name="lote" class="select2" id="id_lote">
-                        <option value="">Selecione o lote</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="id_quantidade">Quantidade:</label>
-                    {{ form.quantidade }}
-                </div>
-                <button type="submit" class="btn btn-primary mt-3">Confirmar Saída</button>
-                <input type="hidden" id="id_estabelecimento" value="{{ user.profile.estabelecimento.id }}">
-
-            </form>
-        </div>
-    </div>
+<div class="container">
+    <h2 class="mt-4">Registrar Saída de Medicamento</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary mt-2">Registrar Saída</button>
+    </form>
 </div>
-
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
 <script>
-    const medicamentoField = $('#id_medicamento');
-    const loteField = $('#id_lote');
+    document.addEventListener("DOMContentLoaded", function() {
+        const medicamentoSelect = document.getElementById("id_medicamento"); // ID do campo medicamento
+        const loteSelect = document.getElementById("id_lote"); // ID do campo lote
 
-medicamentoField.on('change', function () {
-    const medicamentoId = $(this).val();
-    const estabelecimentoId = $('#id_estabelecimento').val();  // Supondo que você tenha um campo escondido com o ID do estabelecimento
-
-    if (medicamentoId && estabelecimentoId) {
-        $.ajax({
-            url: `/api/lotes_por_medicamento/${medicamentoId}/`,  // A URL com o medicamento_id
-            method: 'GET',
-            data: {
-                estabelecimento_id: estabelecimentoId  // Envia o estabelecimento_id na query string
-            },
-            success: function (data) {
-                loteField.html('<option value="">Selecione o lote</option>');
-                if (data.lotes && data.lotes.length > 0) {
-                    data.lotes.forEach(lote => {
-                        loteField.append(
-                            `<option value="${lote.id}">${lote.lote} - Quantidade: ${lote.quantidade}</option>`
-                        );
-                    });
-                } else {
-                    loteField.append('<option value="">Nenhum lote encontrado</option>');
-                }
-            },
-            error: function () {
-                loteField.html('<option value="">Erro ao carregar lotes</option>');
+        // Função para atualizar os lotes
+        medicamentoSelect.addEventListener("change", function() {
+            const medicamentoId = this.value; // Pega o ID do medicamento selecionado
+            if (medicamentoId) {
+                // Faz uma requisição para a API
+                fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Limpa os lotes existentes
+                        loteSelect.innerHTML = '<option value="">---------</option>';
+                        // Adiciona os novos lotes ao select
+                        data.forEach(lote => {
+                            const option = document.createElement("option");
+                            option.value = lote.id;
+                            option.textContent = `${lote.codigo} - ${lote.quantidade} disponíveis`;
+                            loteSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => console.error('Erro ao carregar os lotes:', error));
+            } else {
+                // Se nenhum medicamento for selecionado, limpa os lotes
+                loteSelect.innerHTML = '<option value="">---------</option>';
             }
         });
-    } else {
-        loteField.html('<option value="">Selecione o medicamento e o estabelecimento</option>');
-    }
-});
-
-    $(document).ready(function () {
-    // Inicializa o Select2
-    $('.select2').select2();
-
-    const medicamentoField = $('#id_medicamento');
-    const loteField = $('#id_lote');
-    const estabelecimentoId = $('#id_estabelecimento').val(); // Obtém o ID do estabelecimento
-
-    medicamentoField.on('change', function () {
-        const medicamentoId = $(this).val();
-
-        // Limpa os lotes sempre que o medicamento for alterado
-        loteField.html('<option value="">Selecione o lote</option>');
-
-        if (medicamentoId && estabelecimentoId) {
-            // Faz a requisição para buscar os lotes
-            $.ajax({
-                url: `/api/lotes_por_medicamento/${medicamentoId}/`,
-                method: 'GET',
-                data: { estabelecimento_id: estabelecimentoId },
-                success: function (data) {
-                    if (data.lotes && data.lotes.length > 0) {
-                        data.lotes.forEach(lote => {
-                            loteField.append(
-                                `<option value="${lote.id}">${lote.lote} - Quantidade: ${lote.quantidade}</option>`
-                            );
-                        });
-                    } else {
-                        loteField.append('<option value="">Nenhum lote encontrado</option>');
-                    }
-                },
-                error: function () {
-                    loteField.html('<option value="">Erro ao carregar lotes</option>');
-                }
-            });
-        } else {
-            loteField.html('<option value="">Selecione o medicamento e o estabelecimento</option>');
-        }
     });
-});
-
 </script>
 
 {% endblock %}
