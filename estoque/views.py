@@ -426,18 +426,33 @@ def detalhes_dispensacao(request, id):
     return render(request, "estoque/detalhes_dispensacao.html", context)
 
 from django.http import JsonResponse
-from .models import DetalhesMedicamento
+from django.shortcuts import get_object_or_404
+from .models import DetalhesMedicamento, Medicamento
 
 def lotes_por_medicamento(request, medicamento_id):
-    lotes = DetalhesMedicamento.objects.filter(medicamento_id=medicamento_id)
+    """
+    Retorna os lotes disponíveis para o medicamento selecionado, 
+    filtrados pelo estabelecimento do usuário logado.
+    """
+    user = request.user
+    estabelecimento = user.profile.estabelecimento
+
+    # Obter o medicamento selecionado
+    medicamento = get_object_or_404(Medicamento, id=medicamento_id)
+
+    # Filtrar lotes disponíveis no estabelecimento do usuário
+    lotes = DetalhesMedicamento.objects.filter(
+        medicamento=medicamento,
+        estabelecimento=estabelecimento,
+        quantidade__gt=0  # Apenas lotes com quantidade disponível
+    )
+
+    # Construir a resposta JSON
     data = [
-        {"id": lote.id, "codigo": lote.codigo_lote, "quantidade": lote.quantidade_disponivel}
+        {"id": lote.id, "codigo": lote.lote, "quantidade": lote.quantidade}
         for lote in lotes
     ]
     return JsonResponse(data, safe=False)
-
-
-
 
 
 from django.shortcuts import render, redirect
@@ -479,10 +494,6 @@ def saida_estoque(request):
         form = SaidaEstoqueForm(user=request.user)
 
     return render(request, 'estoque/saida_estoque.html', {'form': form})
-
-
-
-
 
 
 from django.http import JsonResponse

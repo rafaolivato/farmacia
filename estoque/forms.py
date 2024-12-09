@@ -270,21 +270,14 @@ class ItemRequisicaoForm(forms.ModelForm):
 
 
 
-
 from django import forms
-from .models import SaidaEstoque, Medicamento, DetalhesMedicamento
-
-
-
-from django import forms
-from .models import SaidaEstoque, DetalhesMedicamento, Medicamento
+from .models import SaidaEstoque, DetalhesMedicamento, Medicamento, Estoque
 
 class SaidaEstoqueForm(forms.ModelForm):
     class Meta:
         model = SaidaEstoque
         fields = ['medicamento', 'lote', 'quantidade', 'departamento', 'observacao']
         widgets = {
-                 
             'medicamento': forms.Select(attrs={'class': 'form-control', 'id': 'id_medicamento'}),
             'lote': forms.Select(attrs={'class': 'form-control', 'id': 'id_lote'}),
             'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
@@ -293,16 +286,16 @@ class SaidaEstoqueForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # Pegamos o usuário logado
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         if user:
-            # Filtrar medicamentos e lotes pelo estabelecimento do usuário logado
+            # Filtrar medicamentos disponíveis no estoque do estabelecimento do usuário
             estabelecimento = user.profile.estabelecimento
-            medicamentos_ids = DetalhesMedicamento.objects.filter(
-                estabelecimento=estabelecimento
-            ).values_list('medicamento', flat=True).distinct()
 
-            self.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_ids)
-            self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
-                estabelecimento=estabelecimento
-            )
+            self.fields['medicamento'].queryset = Medicamento.objects.filter(
+                estoque__estabelecimento=estabelecimento
+            ).distinct()
+
+            # Inicialmente, o queryset do lote está vazio
+            self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+

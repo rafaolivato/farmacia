@@ -10,35 +10,28 @@
     </form>
 </div>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const medicamentoSelect = document.getElementById("id_medicamento"); // ID do campo medicamento
-        const loteSelect = document.getElementById("id_lote"); // ID do campo lote
-
-        // Função para atualizar os lotes
-        medicamentoSelect.addEventListener("change", function() {
-            const medicamentoId = this.value; // Pega o ID do medicamento selecionado
-            if (medicamentoId) {
-                // Faz uma requisição para a API
-                fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // Limpa os lotes existentes
-                        loteSelect.innerHTML = '<option value="">---------</option>';
-                        // Adiciona os novos lotes ao select
-                        data.forEach(lote => {
-                            const option = document.createElement("option");
-                            option.value = lote.id;
-                            option.textContent = `${lote.codigo} - ${lote.quantidade} disponíveis`;
-                            loteSelect.appendChild(option);
-                        });
-                    })
-                    .catch(error => console.error('Erro ao carregar os lotes:', error));
-            } else {
-                // Se nenhum medicamento for selecionado, limpa os lotes
-                loteSelect.innerHTML = '<option value="">---------</option>';
-            }
-        });
+    // Atualizar os lotes dinamicamente
+    document.getElementById("id_medicamento").addEventListener("change", function () {
+        const medicamentoId = this.value;
+        const loteSelect = document.getElementById("id_lote");
+    
+        if (medicamentoId) {
+            fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
+                .then((response) => response.json())
+                .then((data) => {
+                    loteSelect.innerHTML = '<option value="">---------</option>';
+                    data.forEach((lote) => {
+                        const option = document.createElement("option");
+                        option.value = lote.id;
+                        option.textContent = `${lote.codigo} - Quantidade: ${lote.quantidade}`;
+                        loteSelect.appendChild(option);
+                    });
+                });
+        } else {
+            loteSelect.innerHTML = '<option value="">---------</option>';
+        }
     });
+    
 </script>
 
 {% endblock %}
