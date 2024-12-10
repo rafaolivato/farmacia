@@ -289,13 +289,22 @@ class SaidaEstoqueForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         if user:
-            # Filtrar medicamentos disponíveis no estoque do estabelecimento do usuário
             estabelecimento = user.profile.estabelecimento
-
             self.fields['medicamento'].queryset = Medicamento.objects.filter(
                 estoque__estabelecimento=estabelecimento
-            ).distinct()
+        ).distinct()
 
-            # Inicialmente, o queryset do lote está vazio
+        # Se o medicamento já está selecionado, carregue os lotes correspondentes
+        if 'medicamento' in self.data:
+            try:
+                medicamento_id = int(self.data.get('medicamento'))
+                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
+                    medicamento_id=medicamento_id,
+                    estabelecimento=estabelecimento,
+                )
+            except (ValueError, TypeError):
+                self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+        else:
             self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+
 
