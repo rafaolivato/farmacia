@@ -1,109 +1,123 @@
 {% extends 'estoque/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Transferência Sem Requisição{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h2>Distribuição Sem Requisição</h2>
-
-    <!-- Mensagens de sucesso ou erro -->
-    {% if messages %}
-    <div>
-        {% for message in messages %}
-        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}" role="alert">
-            {{ message }}
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <form method="POST">
+    <h2>Transferência Sem Requisição</h2>
+    <form method="post" novalidate>
         {% csrf_token %}
-        {{ distribuicao_form.as_p }}
+        
+        <!-- Form principal -->
+        {{ distribuicao_form|crispy }}
 
-        <h4>Medicamentos</h4>
-        {{ medicamento_formset.management_form }}
-        <table class="table" id="medicamentos-table">
-            <thead>
-                <tr>
-                    <th>Medicamento</th>
-                    <th>Lote</th>
-                    <th>Quantidade</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for form in medicamento_formset %}
-                <tr class="medicamento-form">
-                    <td>{{ form.medicamento }}</td>
-                    <td>{{ form.lote }}</td>
-                    <td>{{ form.quantidade }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <hr>
 
-        <button type="button" class="btn btn-secondary" id="add-medicamento">Adicionar Medicamento</button>
-        <button type="submit" class="btn btn-primary">Distribuir Medicamentos</button>
-        <a href="{% url 'consultar_distribuicoes' %}" class="btn btn-secondary">Consultar Distribuições</a>
+        <!-- Formset de medicamentos -->
+        <div id="formset-container">
+            <h4>Medicamentos</h4>
+            {{ medicamento_formset.management_form }}
+
+            {% for form in medicamento_formset %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            {% for field in form %}
+                                <div class="col-md-4 mb-3">
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {{ field.errors }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Botões para adicionar/remover medicamentos -->
+        <div class="mb-3">
+            <button type="button" id="add-medicamento" class="btn btn-success">Adicionar Medicamento</button>
+            <button type="button" id="remove-medicamento" class="btn btn-danger">Remover Último Medicamento</button>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Salvar</button>
+        <a href="{% url 'consultar_distribuicoes' %}" class="btn btn-secondary">Consultar</a>
     </form>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.medicamento-form select[name$="-medicamento"]').forEach(function(medicamentoField) {
-            medicamentoField.addEventListener('change', function() {
-                const medicamentoId = this.value;
-                const loteField = this.closest('tr').querySelector('select[name$="-lote"]');
+    // Adiciona funcionalidade dinâmica para o formset
+    document.getElementById('add-medicamento').addEventListener('click', function () {
+        const formsetContainer = document.getElementById('formset-container');
+        const totalForms = document.querySelector('#id_form-TOTAL_FORMS');
+        const currentForms = parseInt(totalForms.value);
+        const emptyFormTemplate = document.getElementById('empty-form-template').innerHTML;
 
-                if (medicamentoId) {
-                    // Buscar os lotes dinamicamente
-                    fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
-                        .then(response => response.json())
-                        .then(data => {
-                            loteField.innerHTML = '<option value="">---------</option>';
-                            data.forEach(lote => {
-                                const option = document.createElement('option');
-                                option.value = lote.id;
-                                option.textContent = `${lote.codigo} - Quantidade: ${lote.quantidade}`;
-                                loteField.appendChild(option);
-                            });
-                        });
-                } else {
-                    loteField.innerHTML = '<option value="">---------</option>';
-                }
-            });
-        });
+        const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, currentForms);
+        formsetContainer.insertAdjacentHTML('beforeend', newFormHtml);
+
+        totalForms.value = currentForms + 1;
     });
-    document.addEventListener('DOMContentLoaded', function() {
-        const addMedicamentoButton = document.getElementById('add-medicamento');
-        const medicamentosTable = document.getElementById('medicamentos-table').getElementsByTagName('tbody')[0];
-        const totalFormsInput = document.querySelector('input[name="form-TOTAL_FORMS"]');
 
-        if (!addMedicamentoButton || !medicamentosTable || !totalFormsInput) {
-            console.error('Erro ao carregar elementos necessários para adicionar medicamentos dinamicamente.');
-            return;
+    document.getElementById('remove-medicamento').addEventListener('click', function () {
+        const formsetContainer = document.getElementById('formset-container');
+        const forms = formsetContainer.querySelectorAll('.card');
+        if (forms.length > 0) {
+            forms[forms.length - 1].remove();
+            const totalForms = document.querySelector('#id_form-TOTAL_FORMS');
+            totalForms.value = parseInt(totalForms.value) - 1;
         }
-
-        addMedicamentoButton.addEventListener('click', function() {
-            const formCount = parseInt(totalFormsInput.value);
-            const newFormCount = formCount + 1;
-
-            // Clonar a última linha do formulário
-            const newFormHtml = medicamentosTable.querySelector('.medicamento-form').cloneNode(true);
-
-            // Atualizar atributos dos campos no novo formulário
-            newFormHtml.querySelectorAll('input, select').forEach(function(input) {
-                const name = input.getAttribute('name').replace(`-${formCount - 1}-`, `-${formCount}-`);
-                const id = input.getAttribute('id').replace(`-${formCount - 1}-`, `-${formCount}-`);
-                input.setAttribute('name', name);
-                input.setAttribute('id', id);
-                input.value = ''; // Limpar o valor do campo
-            });
-
-            // Adicionar a nova linha do formulário à tabela
-            medicamentosTable.appendChild(newFormHtml);
-
-            // Atualizar o total de formulários
-            totalFormsInput.value = newFormCount;
-        });
     });
 </script>
+
+<!-- Template vazio para o formset dinâmico -->
+<script type="text/template" id="empty-form-template">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row">
+                {% for field in medicamento_formset.empty_form %}
+                    <div class="col-md-4 mb-3">
+                        {{ field.label_tag }}
+                        {{ field }}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</script>
+<script>
+    document.addEventListener('change', function (event) {
+        if (event.target && event.target.name.includes('medicamento')) {
+            const medicamentoId = event.target.value;
+            const loteSelect = event.target.closest('.card').querySelector('select[name$="lote"]');
+
+            if (medicamentoId) {
+                fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Limpa o campo de lote
+                        loteSelect.innerHTML = '<option value="">---------</option>';
+                        
+                        // Adiciona os lotes retornados pela API
+                        data.forEach(lote => {
+                            const option = document.createElement('option');
+                            option.value = lote.id;
+                            option.textContent = `${lote.codigo} - (${lote.quantidade} disponíveis)`;
+                            loteSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar lotes:', error);
+                    });
+            } else {
+                // Limpa o campo de lote se nenhum medicamento for selecionado
+                loteSelect.innerHTML = '<option value="">---------</option>';
+            }
+        }
+    });
+</script>
+
+
 {% endblock %}

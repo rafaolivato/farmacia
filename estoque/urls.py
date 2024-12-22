@@ -6,7 +6,7 @@ from .views import saida_estoque,sucesso
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
 from .views import nova_requisicao, consultar_requisicoes, atender_requisicao, lotes_por_medicamento
-from .views import lista_requisicoes, RequisicaoDetailView, aprovar_requisicao, rejeitar_requisicao, confirmar_transferencia, criar_requisicao, atender_requisicao, consultar_requisicoes, distribuicao_sem_requisicao
+from .views import lista_requisicoes, RequisicaoDetailView, aprovar_requisicao, rejeitar_requisicao, confirmar_transferencia, criar_requisicao, atender_requisicao, consultar_requisicoes
 
 
 urlpatterns = [

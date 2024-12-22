@@ -24,14 +24,46 @@ from django.db.models import signals
 from django import forms
 from django.forms import formset_factory
 
+from django import forms
+from .models import Medicamento, DetalhesMedicamento
+
 class MedicamentoForm(forms.ModelForm):
+    lote = forms.ModelChoiceField(
+        queryset=DetalhesMedicamento.objects.none(),
+        required=False,
+        label="Lote",
+        help_text="Selecione o lote disponível para o medicamento."
+    )
+
     class Meta:
         model = Medicamento
-        fields = ['codigo_identificacao', 'nome', 'psicotropico']
+        fields = ['codigo_identificacao', 'nome', 'psicotropico', 'lote']
 
     def __init__(self, *args, **kwargs):
+        estabelecimento_logado = kwargs.pop('estabelecimento_logado', None)
         super().__init__(*args, **kwargs)
+
+        # Define choices para campo psicotrópico
         self.fields['psicotropico'].widget = forms.Select(choices=self.Meta.model.LISTA_CHOICES)
+
+        # Filtra medicamentos por estabelecimento, se aplicável
+        if estabelecimento_logado:
+            self.fields['codigo_identificacao'].queryset = Medicamento.objects.filter(
+                detalhesmedicamento__estabelecimento=estabelecimento_logado
+            ).distinct()
+
+        # Inicializa lotes vazios, atualizando se medicamento já foi selecionado
+        if 'codigo_identificacao' in self.data:
+            try:
+                medicamento_id = int(self.data.get('codigo_identificacao'))
+                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
+                    medicamento_id=medicamento_id,
+                    estabelecimento=estabelecimento_logado,
+                    quantidade__gt=0
+                )
+            except (ValueError, TypeError):
+                pass
+
 
 class PacienteForm(forms.ModelForm):
     class Meta:
