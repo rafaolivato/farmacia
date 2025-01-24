@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from .views import saida_estoque,sucesso
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
-from .views import nova_requisicao, consultar_requisicoes, atender_requisicao, lotes_por_medicamento
+from .views import nova_requisicao, consultar_requisicoes, atender_requisicao, lotes_por_medicamento, distribuicao_sem_requisicao
 from .views import lista_requisicoes, RequisicaoDetailView, aprovar_requisicao, rejeitar_requisicao, confirmar_transferencia, criar_requisicao, atender_requisicao, consultar_requisicoes
 
 
@@ -27,7 +27,7 @@ urlpatterns = [
     path('lista_estabelecimentos/', views.lista_estabelecimentos, name='lista_estabelecimentos'),
     path('cadastrar_departamento/', views.cadastrar_departamento, name ='cadastrar_departamento'),
     path('lista_departamento/', views.lista_departamento, name='lista_departamento'),
-    path('api/lotes_por_medicamento/<int:medicamento_id>/', lotes_por_medicamento, name='lotes_por_medicamento'),
+    path('api/lotes_por_medicamento/<int:medicamento_id>/', views.lotes_por_medicamento, name='lotes_por_medicamento'),
     path('cadastrar_medico/', views.cadastrar_medico, name='cadastrar_medico'),
     path('dispensacoes/', views.listar_dispensacoes, name='listar_dispensacoes'),
     path('dispensacoes/nova/', views.nova_dispensacao, name='nova_dispensacao'),
@@ -38,8 +38,8 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),  
     path('saida_estoque/', views.saida_estoque, name='saida_estoque'),
     path('estoque/dispensacoes/<int:id>/', views.detalhes_dispensacao, name='detalhes_dispensacao'),
-    path('distribuicao-sem-requisicao/', views.distribuicao_sem_requisicao, name='distribuicao_sem_requisicao'),
-    path('distribuicoes/', views.consultar_distribuicoes, name='consultar_distribuicoes'),
+    path('distribuicao_sem_requisicao/distribuicao_sem_requisicao/', views.distribuicao_sem_requisicao, name='distribuicao_sem_requisicao'),
+    path('distribuicao/lista/', views.lista_distribuicoes, name='lista_distribuicoes'),
     path('criar_requisicao/', views.criar_requisicao, name='criar_requisicao'),
     path('consultar_requisicoes/', consultar_requisicoes, name='consultar_requisicoes'),
     path('atender_requisicao/<int:requisicao_id>/', atender_requisicao, name='atender_requisicao'),

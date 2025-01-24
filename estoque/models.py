@@ -132,11 +132,12 @@ class EntradaEstoque(models.Model):
 
 class Estoque(models.Model):
     estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='estoques')
-    medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
+    medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE, related_name='estoques_medicamento')  # Adicionando related_name
     quantidade = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"{self.medicamento.nome} - {self.estabelecimento.nome} - {self.quantidade} unidades"
+
 
 class DetalhesMedicamento(models.Model):
     
@@ -286,38 +287,40 @@ class SaidaEstoque(models.Model):
         return f'Saída {self.numero_saida} - {self.medicamento.nome} - {self.departamento.nome}'
 
 
+from django.db import models
+
 class Distribuicao(models.Model):
-    estabelecimento_origem = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='distribuicoes_origem')
-    estabelecimento_destino = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='distribuicoes_destino')
+    estabelecimento_origem = models.ForeignKey(
+        'Estabelecimento', on_delete=models.CASCADE, related_name='distribuicoes_origem'
+    )
+    estabelecimento_destino = models.ForeignKey(
+        'Estabelecimento', on_delete=models.CASCADE, related_name='distribuicoes_destino'
+    )
     data_atendimento = models.DateField(auto_now_add=True)
-    
+
     def __str__(self):
         return f'{self.estabelecimento_origem} -> {self.estabelecimento_destino} ({self.data_atendimento})'
 
 
 class DistribuicaoMedicamento(models.Model):
-    distribuicao = models.ForeignKey(Distribuicao, on_delete=models.CASCADE, related_name='medicamentos')
-    medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
-    
-    lote = models.ForeignKey(
-        DetalhesMedicamento,
-        on_delete=models.CASCADE,
-        related_name='distribuicoes_por_lote'  # Nome único para o relacionamento reverso
+    distribuicao = models.ForeignKey(
+        Distribuicao, on_delete=models.CASCADE, related_name='medicamentos'
     )
-    validade = models.ForeignKey(
-        DetalhesMedicamento,
-        on_delete=models.CASCADE,
-        related_name='distribuicoes_por_validade'  # Nome único para o relacionamento reverso
-    )
+    medicamento = models.ForeignKey('Medicamento', on_delete=models.CASCADE)
+    lote = models.ForeignKey('DetalhesMedicamento', on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField()
-    
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+
         # Deduzir do estoque do estabelecimento de origem
         estoque_origem = Estoque.objects.get(
             estabelecimento=self.distribuicao.estabelecimento_origem,
             medicamento=self.medicamento
         )
+        if estoque_origem.quantidade < self.quantidade:
+            raise ValueError("Estoque insuficiente no estabelecimento de origem.")
+
         estoque_origem.quantidade -= self.quantidade
         estoque_origem.save()
 

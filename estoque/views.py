@@ -417,7 +417,7 @@ def detalhes_dispensacao(request, id):
     }
     return render(request, "estoque/detalhes_dispensacao.html", context)
 
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.shortcuts import get_object_or_404
 from .models import DetalhesMedicamento, Medicamento
 
@@ -427,6 +427,11 @@ def lotes_por_medicamento(request, medicamento_id):
     filtrados pelo estabelecimento do usuário logado.
     """
     user = request.user
+
+    # Verificar se o usuário tem um estabelecimento associado
+    if not hasattr(user, 'profile') or not user.profile.estabelecimento:
+        return JsonResponse({"error": "Usuário não possui um estabelecimento associado."}, status=400)
+
     estabelecimento = user.profile.estabelecimento
 
     # Obter o medicamento selecionado
@@ -439,12 +444,17 @@ def lotes_por_medicamento(request, medicamento_id):
         quantidade__gt=0  # Apenas lotes com quantidade disponível
     )
 
+    # Verificar se há lotes disponíveis
+    if not lotes.exists():
+        return JsonResponse({"message": "Nenhum lote disponível para este medicamento."}, status=404)
+
     # Construir a resposta JSON
     data = [
         {"id": lote.id, "codigo": lote.lote, "quantidade": lote.quantidade}
         for lote in lotes
     ]
     return JsonResponse(data, safe=False)
+
 
 
 from django.shortcuts import render, redirect
@@ -518,82 +528,6 @@ def get_lotes(request, medicamento_id):
         medicamento_id=medicamento_id, quantidade__gt=0
     ).values("id", "lote")
     return JsonResponse({"lotes": list(lotes)})
-
-
-from django.shortcuts import render, redirect
-from .forms import DistribuicaoForm, DistribuicaoMedicamentoForm
-from django.forms import modelformset_factory
-from .models import DistribuicaoMedicamento, DetalhesMedicamento, Medicamento
-from django.db import transaction
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-
-@login_required
-@transaction.atomic
-def distribuicao_sem_requisicao(request):
-    user = request.user
-    estabelecimento_logado = user.profile.estabelecimento
-
-    # Filtrar medicamentos pelo estabelecimento do usuário logado
-    medicamentos = Medicamento.objects.filter(
-        detalhesmedicamento__estabelecimento=estabelecimento_logado
-    ).distinct()
-
-    # Configuração do formset
-    DistribuicaoMedicamentoFormSet = modelformset_factory(
-        DistribuicaoMedicamento, form=DistribuicaoMedicamentoForm, extra=1
-    )
-
-    if request.method == 'POST':
-        # Instanciar formulários com os dados do POST
-        distribuicao_form = DistribuicaoForm(request.POST, estabelecimento_origem=estabelecimento_logado)
-        medicamento_formset = DistribuicaoMedicamentoFormSet(
-            request.POST or None,
-            queryset=DistribuicaoMedicamento.objects.none(),
-            form_kwargs={'estabelecimento_logado': estabelecimento_logado}
-)
-
-
-        if distribuicao_form.is_valid() and medicamento_formset.is_valid():
-            try:
-                # Salvar a distribuição
-                distribuicao = distribuicao_form.save(commit=False)
-                distribuicao.estabelecimento_origem = estabelecimento_logado
-                distribuicao.save()
-
-                # Processar os medicamentos
-                medicamentos = medicamento_formset.save(commit=False)
-                for medicamento in medicamentos:
-                    # Associar distribuição ao medicamento e verificar lote
-                    medicamento.distribuicao = distribuicao
-
-                    if not medicamento.lote:
-                        messages.error(request, "Selecione um lote para cada medicamento.")
-                        raise ValueError("Lote não selecionado para o medicamento.")
-
-                    medicamento.save()
-
-                messages.success(request, "Distribuição realizada com sucesso!")
-                return redirect('consultar_distribuicoes')
-
-            except Exception as e:
-                messages.error(request, f"Ocorreu um erro ao salvar: {str(e)}")
-        else:
-            messages.error(request, "Corrija os erros nos formulários.")
-
-    else:
-        # Instanciar formulários vazios
-        distribuicao_form = DistribuicaoForm(estabelecimento_origem=estabelecimento_logado)
-        medicamento_formset = DistribuicaoMedicamentoFormSet(
-            queryset=DistribuicaoMedicamento.objects.none(), 
-            form_kwargs={'estabelecimento_logado': estabelecimento_logado}
-        )
-
-    return render(request, 'estoque/distribuicao_sem_requisicao.html', {
-        'distribuicao_form': distribuicao_form,
-        'medicamento_formset': medicamento_formset,
-        'medicamentos': medicamentos,  # Caso precise exibir medicamentos no template
-    })
 
 
 from django.shortcuts import render
@@ -791,3 +725,72 @@ def criar_requisicao(request):
         'item_form': item_form,
         'itens_requisicao': itens_requisicao,
     })
+
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import Distribuicao, DistribuicaoMedicamento, DetalhesMedicamento, Estoque, Estabelecimento
+from .forms import DistribuicaoForm, DistribuicaoMedicamentoForm
+from django.forms import inlineformset_factory
+from django.db import transaction
+
+@login_required
+def distribuicao_sem_requisicao(request):
+    user_estabelecimento = request.user.profile.estabelecimento
+
+    DistribuicaoMedicamentoFormSet = inlineformset_factory(
+        Distribuicao,
+        DistribuicaoMedicamento,
+        form=DistribuicaoMedicamentoForm,
+        extra=1,
+        can_delete=True
+    )
+
+    distrib = Distribuicao(estabelecimento_origem=user_estabelecimento)
+    distrib_form = DistribuicaoForm(request.POST or None, user_estabelecimento=user_estabelecimento)
+    formset = DistribuicaoMedicamentoFormSet(
+        request.POST or None,
+        instance=distrib,
+        form_kwargs={'distrib': distrib}
+    )
+    
+    formset = DistribuicaoMedicamentoFormSet(
+    request.POST or None,
+    instance=distrib,
+    form_kwargs={'distrib': distrib}
+)
+    if request.method == 'POST':
+        if distrib_form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                distrib = distrib_form.save(commit=False)
+                distrib.estabelecimento_origem = user_estabelecimento
+                distrib.save()
+
+                medicamentos = formset.save(commit=False)
+                for medicamento in medicamentos:
+                    medicamento.distribuicao = distrib
+
+                    # Atualiza o estoque do lote
+                    lote = medicamento.lote
+                    if medicamento.quantidade > lote.quantidade:
+                        raise ValueError("Quantidade maior que o estoque disponível no lote.")
+
+                    lote.quantidade -= medicamento.quantidade
+                    lote.save()
+                    medicamento.save()
+
+            return redirect('lista_distribuicoes')
+
+    context = {
+        'distrib_form': distrib_form,
+        'formset': formset,
+    }
+    return render(request, 'estoque/distribuicao_sem_requisicao.html', context)
+
+
+
+
+
+def lista_distribuicoes(request):
+    distribuicoes = Distribuicao.objects.all()
+    return render(request, 'estoque/lista_distribuicoes.html', {'distribuicoes': distribuicoes})
