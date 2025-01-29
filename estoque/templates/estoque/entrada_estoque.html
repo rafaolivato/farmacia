@@ -1,4 +1,5 @@
 {% extends 'estoque/base.html' %}
+{% load crispy_forms_tags %}
 
 {% block content %}
 <h2>Entrada de Estoque de Medicamentos</h2>
@@ -7,14 +8,14 @@
     {% csrf_token %}
     
     <h3>Informações da Entrada</h3>
-    {{ entrada_form.as_p }}
+    {{ entrada_form|crispy }}
 
     <h3>Detalhes dos Medicamentos</h3>
     <div id="detalhes-formset">
         {{ detalhes_formset.management_form }}
         {% for form in detalhes_formset %}
-            <div class="form-row">
-                {{ form.as_p }}
+            <div class="form-row mb-3">
+                {{ form|crispy }}
             </div>
         {% endfor %}
     </div>
@@ -33,7 +34,7 @@
         
         const newForm = formset.querySelector('.form-row').cloneNode(true);
         
-        const fields = newForm.querySelectorAll('input, select');
+        const fields = newForm.querySelectorAll('input, select, textarea');
         fields.forEach(field => {
             const name = field.name.replace(/-\d+-/, `-${formCount}-`);
             field.name = name;
@@ -52,3 +53,4 @@
 </script>
 
 {% endblock %}
+

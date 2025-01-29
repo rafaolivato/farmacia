@@ -296,6 +296,8 @@ class Distribuicao(models.Model):
 
 
 class DistribuicaoMedicamento(models.Model):
+    
+    
     distribuicao = models.ForeignKey(Distribuicao, on_delete=models.CASCADE, related_name='medicamentos')
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
     
@@ -310,6 +312,7 @@ class DistribuicaoMedicamento(models.Model):
         related_name='distribuicoes_por_validade'  # Nome único para o relacionamento reverso
     )
     quantidade = models.PositiveIntegerField()
+   
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

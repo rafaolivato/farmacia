@@ -218,6 +218,7 @@ from django import forms
 from .models import Distribuicao, Estabelecimento
 
 class DistribuicaoForm(forms.ModelForm):
+   
     class Meta:
         model = Distribuicao
         fields = ['estabelecimento_destino']
@@ -236,45 +237,53 @@ class DistribuicaoForm(forms.ModelForm):
 
 
 from django import forms
-from .models import DistribuicaoMedicamento, Medicamento, DetalhesMedicamento
+from .models import Medicamento, DetalhesMedicamento, Estabelecimento
 
-
-class DistribuicaoMedicamentoForm(forms.ModelForm):
-    class Meta:
-        model = DistribuicaoMedicamento
-        fields = ['medicamento', 'lote', 'quantidade']
+class DistribuicaoMedicamentoForm(forms.Form):
+    medicamento = forms.ModelChoiceField(
+        queryset=Medicamento.objects.none(),
+        label="Medicamento",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    lote = forms.ModelChoiceField(
+        queryset=DetalhesMedicamento.objects.none(),
+        label="Lote",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    quantidade = forms.IntegerField(
+        label="Quantidade",
+        min_value=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+    estabelecimento_destino = forms.ModelChoiceField(
+        queryset=Estabelecimento.objects.none(),
+        label="Estabelecimento Destino",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
 
     def __init__(self, *args, **kwargs):
-        estabelecimento_logado = kwargs.pop('estabelecimento_logado', None)
+        estabelecimento_origem = kwargs.pop('estabelecimento_origem', None)
         super().__init__(*args, **kwargs)
 
-        # Carregar os medicamentos disponíveis
-        if estabelecimento_logado:
-            self.fields['medicamento'].queryset = Medicamento.objects.filter(
-                detalhesmedicamento__estabelecimento=estabelecimento_logado
+        if estabelecimento_origem:
+            # Filtrar medicamentos disponíveis no estoque do estabelecimento logado
+            medicamentos_disponiveis = Medicamento.objects.filter(
+                detalhesmedicamento__estabelecimento=estabelecimento_origem,
+                detalhesmedicamento__quantidade__gt=0
             ).distinct()
 
-        # Inicialmente, o lote é vazio e será atualizado dinamicamente no frontend
-        self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+            self.fields['medicamento'].queryset = medicamentos_disponiveis
 
-        # Atualizar os lotes caso já haja um medicamento selecionado (edição)
-        if 'medicamento' in self.data:
-            try:
-                medicamento_id = int(self.data.get('medicamento'))
-                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
-                    medicamento_id=medicamento_id,
-                    estabelecimento=estabelecimento_logado,
-                    quantidade__gt=0  # Apenas lotes com estoque disponível
-                )
-            except (ValueError, TypeError):
-                pass
-        elif self.instance.pk and self.instance.medicamento:
+            # Filtrar lotes do estabelecimento logado
             self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
-                medicamento=self.instance.medicamento,
-                estabelecimento=estabelecimento_logado,
+                estabelecimento=estabelecimento_origem,
                 quantidade__gt=0
             )
 
+            # Excluir o estabelecimento logado da lista de destinos
+            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.exclude(
+                id=estabelecimento_origem.id
+            )
 
 
 from django import forms
