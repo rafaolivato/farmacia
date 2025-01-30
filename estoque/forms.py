@@ -102,6 +102,16 @@ class EntradaEstoqueForm(forms.ModelForm):
     class Meta:
         model = EntradaEstoque
         fields = ['tipo', 'data', 'data_recebimento', 'fornecedor', 'tipo_documento', 'numero_documento', 'valor_total', 'observacao']
+        widgets = {
+            'tipo': forms.Select(attrs={'class': 'form-control'}),
+            'data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_recebimento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fornecedor': forms.Select(attrs={'class': 'form-control'}),
+            'tipo_documento': forms.Select(attrs={'class': 'form-control'}),
+            'numero_documento': forms.TextInput(attrs={'class': 'form-control'}),
+            'valor_total': forms.TextInput(attrs={'class': 'form-control valor-total', 'style': 'max-width: 150px;'}),
+            'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
 
 
     def __init__(self, *args, **kwargs):
@@ -141,14 +151,26 @@ class DetalhesMedicamentoForm(forms.ModelForm):
             'medicamento': forms.Select(attrs={'class': 'form-control select2'}),
             'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
             'lote': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+            'valor': forms.TextInput(attrs={'class': 'form-control valor-campo', 'style': 'max-width: 150px;'}),
             'localizacao': forms.Select(attrs={'class': 'form-control select2'}),
             'fabricante': forms.Select(attrs={'class': 'form-control select2'})
         }
+
+ 
 
 # FormSet para DetalhesMedicamento
 DetalhesMedicamentoFormSet = modelformset_factory(
     DetalhesMedicamento,
     fields=('medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante'),
+   widgets={
+    'medicamento': forms.Select(attrs={'class': 'form-control select2', 'style': 'max-width: 300px;'}),
+    'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'style': 'max-width: 120px;'}),
+    'lote': forms.TextInput(attrs={'class': 'form-control', 'style': 'max-width: 200px;'}),
+    'valor': forms.TextInput(attrs={'class': 'form-control valor-campo', 'style': 'max-width: 150px;'}),
+    'localizacao': forms.Select(attrs={'class': 'form-control select2', 'style': 'max-width: 250px;'}),
+    'validade': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'style': 'max-width: 200px;'}),
+    'fabricante': forms.Select(attrs={'class': 'form-control select2', 'style': 'max-width: 250px;'})
+},
     extra=1,  # Garante que pelo menos um formulário vazio apareça
     can_delete=True  # Habilita exclusão de itens no FormSet
 )
@@ -286,7 +308,9 @@ class DistribuicaoForm(forms.ModelForm):
     class Meta:
         model = Distribuicao
         fields = ['estabelecimento_destino']
-
+        widgets = {
+            'estabelecimento_destino': forms.Select(attrs={'class': 'form-control'}),
+        }
     def __init__(self, *args, **kwargs):
         user_estabelecimento = kwargs.pop('user_estabelecimento', None)
         super().__init__(*args, **kwargs)
@@ -303,38 +327,31 @@ class DistribuicaoMedicamentoForm(forms.ModelForm):
     class Meta:
         model = DistribuicaoMedicamento
         fields = ['medicamento', 'lote', 'quantidade']
-
+        widgets = {
+            'medicamento': forms.Select(attrs={'class': 'form-control', 'id': 'id_medicamento'}),
+            'lote': forms.Select(attrs={'class': 'form-control', 'id': 'id_lote'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            
+        }
     def __init__(self, *args, **kwargs):
-        distrib = kwargs.pop('distrib', None)  # Obtem a instância de Distribuicao
+        distrib = kwargs.pop('distrib', None)
         super().__init__(*args, **kwargs)
 
-        # Filtrar medicamentos com estoque maior que zero no estabelecimento de origem
+        self.fields['lote'].queryset = Estoque.objects.none()  # Inicialmente vazio
+
         if distrib and distrib.estabelecimento_origem:
             self.fields['medicamento'].queryset = Medicamento.objects.filter(
                 estoques_medicamento__estabelecimento=distrib.estabelecimento_origem,
                 estoques_medicamento__quantidade__gt=0
             ).distinct()
 
-        # Filtrar lotes somente se um medicamento for selecionado
-        if 'medicamento' in self.data:
-            try:
-                medicamento_id = int(self.data.get('medicamento'))
-                self.fields['lote'].queryset = Estoque.objects.filter(
-                    medicamento_id=medicamento_id,
-                    estabelecimento=distrib.estabelecimento_origem,
-                    quantidade__gt=0
-                )
-            except (ValueError, TypeError):
-                self.fields['lote'].queryset = Estoque.objects.none()
-        elif self.instance.pk and self.instance.medicamento:
-            # Caso esteja editando, exibir os lotes correspondentes ao medicamento
+        if self.instance.pk and self.instance.medicamento:
             self.fields['lote'].queryset = Estoque.objects.filter(
                 medicamento=self.instance.medicamento,
                 estabelecimento=distrib.estabelecimento_origem,
                 quantidade__gt=0
             )
-        else:
-            self.fields['lote'].queryset = Estoque.objects.none()
+
 
 
 

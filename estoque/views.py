@@ -455,8 +455,6 @@ def lotes_por_medicamento(request, medicamento_id):
     ]
     return JsonResponse(data, safe=False)
 
-
-
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages

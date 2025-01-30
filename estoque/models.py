@@ -107,6 +107,12 @@ class EntradaEstoque(models.Model):
         ("distribuidora", "Distribuidora"),
         ("entidade", "Entidade"),
     )
+
+    TIPOS_DOCUMENTO = [
+        ('Nota Fiscal', 'Nota Fiscal'),
+        ('Nota Simples Remessa', 'Nota Simples Remessa'),
+        ('Outro', 'Outro')
+    ]
     
     estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, default=1)
     tipo = models.CharField(max_length=50, choices=TIPO_MOVIMENTACAO_CHOICES, verbose_name="Tipo de Entrada")
@@ -116,9 +122,13 @@ class EntradaEstoque(models.Model):
     fonte_financiamento = models.CharField(max_length=50, choices=FONTE_FINANCIAMENTO_CHOICES, default="municipal")
     fornecedor_tipo = models.CharField(max_length=50, choices=FORNECEDOR_TIPO_CHOICES, default="distribuidora")
     fornecedor = models.ForeignKey('Fornecedor', on_delete=models.CASCADE, null=True)
-    tipo_documento = models.CharField(max_length=50, default="Nota Fiscal")
-    numero_documento = models.CharField(max_length=50, default="0000", verbose_name="Número do Documento")
-    valor_total = models.DecimalField(max_digits=10, decimal_places=2, default=00.00)
+    tipo_documento = models.CharField(
+        max_length=50,
+        choices=TIPOS_DOCUMENTO,  # Define as opções disponíveis
+        default='Nota Fiscal'  # Define o valor padrão
+    )
+    numero_documento = models.CharField(max_length=50, verbose_name="Número do Documento")
+    valor_total = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="Valor Total")
     observacao = models.CharField(max_length=100, blank=True, null=True, verbose_name="Observação")
     user = models.ForeignKey(User, on_delete=models.CASCADE)  # Substituir operador por user
 

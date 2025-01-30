@@ -32,7 +32,8 @@
                             <td>{{ validade|date:"d/m/Y" }}</td>
                             <td>{{ detalhe_medicamento.lote }}</td>
                             <td>{{ detalhe_medicamento.total_quantidade }}</td>
-                            <td>{{ detalhe_medicamento.total_valor }}</td>
+                            <td>R$ {{ detalhe_medicamento.total_valor|floatformat:2|default:"0,00" }}</td>
+
                         </tr>
                     {% endif %}
                 {% endwith %}

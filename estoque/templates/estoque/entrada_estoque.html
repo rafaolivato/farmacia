@@ -8,13 +8,17 @@
     
     <h3>Informações da Entrada</h3>
     {{ entrada_form.as_p }}
-
+    
+    
+    <input type="text" name="valor_total" id="id_valor_total" class="form-control valor-total" value="{{ form.valor_total.value }}">
     <h3>Detalhes dos Medicamentos</h3>
     <div id="detalhes-formset">
         {{ detalhes_formset.management_form }}
         {% for form in detalhes_formset %}
             <div class="form-row">
                 {{ form.as_p }}
+            
+
             </div>
         {% endfor %}
     </div>
@@ -48,6 +52,24 @@
 
         formset.appendChild(newForm);
         totalForms.value = formCount + 1;
+    });
+
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('.valor-campo, .valor-total').forEach(function (input) {
+            input.addEventListener('input', function () {
+                let value = this.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+                value = (parseInt(value) / 100).toFixed(2); // Converte para decimal
+                this.value = value ? `R$ ${value.replace('.', ',')}` : ''; // Formata com R$ e vírgula
+            });
+
+            // Formata o valor inicial caso já tenha algo no campo
+            if (input.value) {
+                let value = parseFloat(input.value).toFixed(2);
+                input.value = `R$ ${value.replace('.', ',')}`;
+            }
+        });
     });
 </script>
 
