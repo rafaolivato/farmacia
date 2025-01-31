@@ -528,6 +528,81 @@ def get_lotes(request, medicamento_id):
     return JsonResponse({"lotes": list(lotes)})
 
 
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from .models import DetalhesMedicamento, DistribuicaoMedicamento
+from .forms import DistribuicaoMedicamentoForm
+
+@login_required
+def distribuicao_sem_requisicao(request):
+    user_profile = request.user.profile
+    estabelecimento_origem = user_profile.estabelecimento
+
+    if not estabelecimento_origem:
+        messages.error(request, "Você não está associado a nenhum estabelecimento.")
+        return redirect('dashboard')
+
+    if request.method == "POST":
+        form = DistribuicaoMedicamentoForm(request.POST, estabelecimento_origem=estabelecimento_origem)
+        if form.is_valid():
+            # Dados do formulário
+            medicamento = form.cleaned_data['medicamento']
+            lote = form.cleaned_data['lote']
+            quantidade = form.cleaned_data['quantidade']
+            estabelecimento_destino = form.cleaned_data['estabelecimento_destino']
+
+            # Verificar estoque no estabelecimento de origem
+            detalhes_medicamento = get_object_or_404(
+                DetalhesMedicamento,
+                medicamento=medicamento,
+                lote=lote.lote,
+                estabelecimento=estabelecimento_origem
+            )
+
+            if detalhes_medicamento.quantidade < quantidade:
+                messages.error(request, "Quantidade insuficiente no estoque.")
+                return redirect('distribuicao_sem_requisicao')
+
+            # Atualizar o estoque no estabelecimento de origem
+            detalhes_medicamento.quantidade -= quantidade
+            detalhes_medicamento.save()
+
+            # Atualizar ou criar o estoque no estabelecimento de destino
+            detalhes_destino, created = DetalhesMedicamento.objects.get_or_create(
+                medicamento=medicamento,
+                lote=lote.lote,
+                estabelecimento=estabelecimento_destino,
+                defaults={
+                    'quantidade': 0,
+                    'validade': lote.validade,
+                    'localizacao': lote.localizacao,
+                    'fabricante': lote.fabricante,
+                    'valor': lote.valor,
+                }
+            )
+            detalhes_destino.quantidade += quantidade
+            detalhes_destino.save()
+
+            # Registrar a distribuição
+            DistribuicaoMedicamento.objects.create(
+                
+                
+                medicamento=medicamento,
+                lote=detalhes_medicamento,
+                quantidade=quantidade,
+               
+            )
+
+            messages.success(request, "Distribuição realizada com sucesso!")
+            return redirect('estoque')
+    else:
+        form = DistribuicaoMedicamentoForm(estabelecimento_origem=estabelecimento_origem)
+
+    return render(request, 'estoque/distribuicao_sem_requisicao.html', {'form': form})
+
+
+
 from django.shortcuts import render
 from .models import Distribuicao
 

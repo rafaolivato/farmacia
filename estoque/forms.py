@@ -236,6 +236,77 @@ class UploadExcelForm(forms.Form):
 
 
 
+from django import forms
+from .models import Distribuicao, Estabelecimento
+
+class DistribuicaoForm(forms.ModelForm):
+   
+    class Meta:
+        model = Distribuicao
+        fields = ['estabelecimento_destino']
+        widgets = {
+            'estabelecimento_destino': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, estabelecimento_origem=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if estabelecimento_origem:
+            # Excluir o estabelecimento de origem da queryset
+            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.exclude(id=estabelecimento_origem.id)
+        else:
+            # Se não houver estabelecimento de origem, mantém a queryset vazia
+            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.none()
+
+
+from django import forms
+from .models import Medicamento, DetalhesMedicamento, Estabelecimento
+
+class DistribuicaoMedicamentoForm(forms.Form):
+    medicamento = forms.ModelChoiceField(
+        queryset=Medicamento.objects.none(),
+        label="Medicamento",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    lote = forms.ModelChoiceField(
+        queryset=DetalhesMedicamento.objects.none(),
+        label="Lote",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    quantidade = forms.IntegerField(
+        label="Quantidade",
+        min_value=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+    estabelecimento_destino = forms.ModelChoiceField(
+        queryset=Estabelecimento.objects.none(),
+        label="Estabelecimento Destino",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        estabelecimento_origem = kwargs.pop('estabelecimento_origem', None)
+        super().__init__(*args, **kwargs)
+
+        if estabelecimento_origem:
+            # Filtrar medicamentos disponíveis no estoque do estabelecimento logado
+            medicamentos_disponiveis = Medicamento.objects.filter(
+                detalhesmedicamento__estabelecimento=estabelecimento_origem,
+                detalhesmedicamento__quantidade__gt=0
+            ).distinct()
+
+            self.fields['medicamento'].queryset = medicamentos_disponiveis
+
+            # Filtrar lotes do estabelecimento logado
+            self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
+                estabelecimento=estabelecimento_origem,
+                quantidade__gt=0
+            )
+
+            # Excluir o estabelecimento logado da lista de destinos
+            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.exclude(
+                id=estabelecimento_origem.id
+            )
+
 
 from django import forms
 from .models import Requisicao, ItemRequisicao, Medicamento, Estabelecimento
