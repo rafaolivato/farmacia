@@ -227,6 +227,7 @@ def entrada_estoque_view(request):
     if request.method == 'POST':
         entrada_form = EntradaEstoqueForm(request.POST, user=request.user)
         detalhes_formset = DetalhesMedicamentoFormSet(request.POST)
+       
 
         if entrada_form.is_valid() and detalhes_formset.is_valid():
             with transaction.atomic():

@@ -143,7 +143,23 @@ class DetalhesMedicamentoForm(forms.ModelForm):
         required=True,
         label="Localização"
     )
-
+    valor = forms.DecimalField(
+        required=True,
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.TextInput(attrs={'class': 'form-control valor-campo', 'placeholder': 'Valor Unitário'}),
+        initial=0.00  # 🔥 Garante que o campo não fique vazio
+    )
+    
+    def clean_valor(self):
+        valor = self.cleaned_data.get('valor')
+        if isinstance(valor, str):
+            valor = valor.replace(",", ".")  # Substitui vírgula por ponto para conversão correta
+        try:
+            return float(valor)
+        except ValueError:
+            raise forms.ValidationError("Digite um valor numérico válido.")
+        
     class Meta:
         model = DetalhesMedicamento
         fields = ['medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante']
