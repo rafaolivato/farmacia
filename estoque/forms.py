@@ -95,10 +95,19 @@ class LoginForm(forms.Form):
     operador = forms.CharField(max_length=100)
     senha = forms.CharField(widget=forms.PasswordInput)
     
+
 from django import forms
-from .models import EntradaEstoque
+from .models import EntradaEstoque, DetalhesMedicamento, Medicamento, Fabricante, Localizacao
 
 class EntradaEstoqueForm(forms.ModelForm):
+    valor_total = forms.DecimalField(
+        required=True,
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.TextInput(attrs={'class': 'form-control valor-total', 'placeholder': 'R$ 0,00'}),
+        initial=0.00
+    )
+
     class Meta:
         model = EntradaEstoque
         fields = ['tipo', 'data', 'data_recebimento', 'fornecedor', 'tipo_documento', 'numero_documento', 'valor_total', 'observacao']
@@ -109,10 +118,20 @@ class EntradaEstoqueForm(forms.ModelForm):
             'fornecedor': forms.Select(attrs={'class': 'form-control'}),
             'tipo_documento': forms.Select(attrs={'class': 'form-control'}),
             'numero_documento': forms.TextInput(attrs={'class': 'form-control'}),
-            'valor_total': forms.TextInput(attrs={'class': 'form-control valor-total', 'style': 'max-width: 150px;'}),
+            'valor_total': forms.TextInput(attrs={'class': 'form-control valor-total'}),
             'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
+    def clean_valor_total(self):
+        valor = self.cleaned_data.get('valor_total')
+        if isinstance(valor, str):
+            valor = valor.replace(".", "").replace(",", ".").replace("R$", "").strip()  # Converte 1.000,50 para 1000.50
+        try:
+            return float(valor)
+        except ValueError:
+            raise forms.ValidationError("Digite um número válido.")
+
+    
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)  # Retira 'user' de kwargs
@@ -126,51 +145,27 @@ from django import forms
 from .models import DetalhesMedicamento, Estoque, Medicamento, Fabricante, Localizacao
 from django.forms import modelformset_factory
 
-# Formulário para DetalhesMedicamento
 class DetalhesMedicamentoForm(forms.ModelForm):
-    medicamento = forms.ModelChoiceField(
-        queryset=Medicamento.objects.all(),
-        required=True,
-        label="Medicamento"
-    )
-    fabricante = forms.ModelChoiceField(
-        queryset=Fabricante.objects.all(),
-        required=True,
-        label="Fabricante"
-    )
-    localizacao = forms.ModelChoiceField(
-        queryset=Localizacao.objects.all(),
-        required=True,
-        label="Localização"
-    )
     valor = forms.DecimalField(
         required=True,
         max_digits=10,
         decimal_places=2,
-        widget=forms.TextInput(attrs={'class': 'form-control valor-campo', 'placeholder': 'Valor Unitário'}),
-        initial=0.00  # 🔥 Garante que o campo não fique vazio
+        widget=forms.TextInput(attrs={'class': 'form-control valor-campo', 'placeholder': 'R$ 0,00'}),
+        initial=0.00
     )
-    
+
     def clean_valor(self):
         valor = self.cleaned_data.get('valor')
         if isinstance(valor, str):
-            valor = valor.replace(",", ".")  # Substitui vírgula por ponto para conversão correta
+            valor = valor.replace(".", "").replace(",", ".")  # Converte 1.000,50 para 1000.50
         try:
             return float(valor)
         except ValueError:
-            raise forms.ValidationError("Digite um valor numérico válido.")
-        
+            raise forms.ValidationError("Digite um número válido.")
+
     class Meta:
         model = DetalhesMedicamento
         fields = ['medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante']
-        widgets = {
-            'medicamento': forms.Select(attrs={'class': 'form-control select2'}),
-            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
-            'lote': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
-            'valor': forms.TextInput(attrs={'class': 'form-control valor-campo', 'style': 'max-width: 150px;'}),
-            'localizacao': forms.Select(attrs={'class': 'form-control select2'}),
-            'fabricante': forms.Select(attrs={'class': 'form-control select2'})
-        }
 
  
 
@@ -224,6 +219,11 @@ class DispensacaoMedicamentoForm(forms.ModelForm):
     class Meta:
         model = DispensacaoMedicamento
         fields = ['medicamento', 'quantidade']
+        widgets = {
+            'medicamento': forms.Select(attrs={'class': 'form-control w-100'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control w-100'}),
+        }
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -367,25 +367,28 @@ class SaidaEstoqueForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+    
         if user:
             estabelecimento = user.profile.estabelecimento
             self.fields['medicamento'].queryset = Medicamento.objects.filter(
-            estoques_medicamento__estabelecimento=user.profile.estabelecimento
+                estoques_medicamento__estabelecimento=estabelecimento,
+                estoques_medicamento__quantidade__gt=0  # Filtra apenas os medicamentos com estoque > 0
             ).distinct()
 
-
-        # Se o medicamento já está selecionado, carregue os lotes correspondentes
+    # Se o medicamento já está selecionado, carregue os lotes correspondentes
         if 'medicamento' in self.data:
             try:
                 medicamento_id = int(self.data.get('medicamento'))
                 self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
                     medicamento_id=medicamento_id,
                     estabelecimento=estabelecimento,
+                    quantidade__gt=0  # Filtra apenas os lotes com estoque > 0
                 )
             except (ValueError, TypeError):
                 self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
         else:
             self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+
 
 
 from django import forms

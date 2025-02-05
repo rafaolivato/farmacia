@@ -56,45 +56,31 @@
 
 </script>
 <script>
-    document.querySelectorAll('.valor-campo').forEach(input => {
-        input.addEventListener('input', function() {
-            let quantidade = parseFloat(this.closest('tr').querySelector('.quantidade-input').value) || 0;
-            let valorUnitario = parseFloat(this.value.replace(",", ".")) || 0;
-            let total = quantidade * valorUnitario;
-            
-            if (!isNaN(total)) {
-                this.closest('tr').querySelector('.total-campo').textContent = `R$ ${total.toFixed(2)}`;
-            } else {
-                this.closest('tr').querySelector('.total-campo').textContent = "R$ 0.00";
-            }
-        });
-    });
-    
-</script>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        document.querySelectorAll(".valor-campo").forEach(input => {
-            input.addEventListener("input", function (e) {
-                let value = e.target.value.replace(/\D/g, ""); // Remove tudo que não for número
-                let formattedValue = (parseFloat(value) / 100).toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL"
-                });
-    
-                e.target.value = formattedValue; // Atualiza o campo com o formato "R$ 10,00"
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.valor-campo, .valor-total').forEach(input => {
+            input.addEventListener('input', function () {
+                let value = this.value.replace(/\D/g, ""); // Remove tudo que não for número
+                if (value) {
+                    let floatValue = (parseFloat(value) / 100).toFixed(2); // Converte para decimal correto
+                    this.value = formatCurrency(floatValue); // Aplica a formatação de moeda
+                }
             });
     
-            // Formatar ao carregar se já houver um valor no campo
-            let initialValue = input.value.replace(/\D/g, "");
-            if (initialValue) {
-                input.value = (parseFloat(initialValue) / 100).toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL"
-                });
-            }
+            input.addEventListener('blur', function () {
+                // Remove o "R$" e converte para formato aceito pelo Django antes de enviar o formulário
+                this.value = this.value.replace(/[R$\s.]/g, "").replace(",", ".");
+            });
         });
+    
+        function formatCurrency(value) {
+            return "R$ " + value.replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); 
+        }
     });
     </script>
+
+        
+    
+
     
 
 {% endblock %}

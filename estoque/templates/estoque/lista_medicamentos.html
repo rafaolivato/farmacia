@@ -33,14 +33,19 @@
                             <td>{{ detalhe_medicamento.lote }}</td>
                             <td>{{ detalhe_medicamento.total_quantidade }}</td>
                             <td>R$ {{ detalhe_medicamento.total_valor|floatformat:2|default:"0,00" }}</td>
-
                         </tr>
                     {% endif %}
                 {% endwith %}
             {% endif %}
         {% endfor %}
     </tbody>
+    <tr>
+        <td colspan="6" style="text-align: right;"><strong>Total Geral</strong></td>
+        <td><strong>R$ {{ total_valor_geral|floatformat:2|default:"0,00" }}</strong></td>
+    </tr>
 </table>
+
+
 
 <a href="{% url 'entrada_estoque' %}" class="btn btn-secondary btn">Voltar</a>
 {% endblock %}

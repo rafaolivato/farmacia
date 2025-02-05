@@ -83,14 +83,19 @@ def lista_medicamentos(request):
         .order_by("medicamento__nome", "lote")
     )
 
+    # Calcular o total geral do valor
+    total_valor_geral = detalhes_medicamentos.aggregate(total_valor_geral=Sum("total_valor"))["total_valor_geral"] or 0
+
     return render(
         request,
         "estoque/lista_medicamentos.html",
         {
             "detalhes_medicamentos": detalhes_medicamentos,
             "now_plus_3_months": now_plus_3_months,
+            "total_valor_geral": total_valor_geral,  # Passando o total para o template
         },
     )
+
 
 
 def lista_pacientes(request):
