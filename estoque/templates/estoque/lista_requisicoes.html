@@ -1,37 +1,20 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Lista de Requisições</title>
-</head>
-<body>
-    <h1>Lista de Requisições</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Origem</th>
-                <th>Destino</th>
-                <th>Data</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for requisicao in requisicoes %}
-                <tr>
-                    <td>{{ requisicao.id }}</td>
-                    <td>{{ requisicao.estabelecimento_origem }}</td>
-                    <td>{{ requisicao.estabelecimento_destino }}</td>
-                    <td>{{ requisicao.data_requisicao }}</td>
-                    <td>{{ requisicao.get_status_display }}</td>
-                    <td>
-                        <a href="{% url 'detalhe_requisicao' requisicao.pk %}">Ver Detalhes</a>
-
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</body>
-</html>
+{% extends 'estoque/base.html' %}
+{% block content %}
+<h2>Requisições Pendentes</h2>
+<table>
+    <tr>
+        <th>Origem</th>
+        <th>Destino</th>
+        <th>Data</th>
+        <th>Ações</th>
+    </tr>
+    {% for requisicao in requisicoes %}
+    <tr>
+        <td>{{ requisicao.estabelecimento_origem }}</td>
+        <td>{{ requisicao.estabelecimento_destino }}</td>
+        <td>{{ requisicao.data_requisicao }}</td>
+        <td><a href="{% url 'responder_requisicao' requisicao.id %}">Responder</a></td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

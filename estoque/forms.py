@@ -325,31 +325,6 @@ class DistribuicaoMedicamentoForm(forms.Form):
 
 
 from django import forms
-from .models import Requisicao, ItemRequisicao, Medicamento, Estabelecimento
-
-class RequisicaoForm(forms.ModelForm):
-    class Meta:
-        model = Requisicao
-        fields = ['estabelecimento_origem', 'estabelecimento_destino', 'observacoes']
-        widgets = {
-            'observacoes': forms.Textarea(attrs={'maxlength': 100}),
-        }
-
-class ItemRequisicaoForm(forms.ModelForm):
-    class Meta:
-        model = ItemRequisicao
-        fields = ['medicamento', 'quantidade']
-
-    def __init__(self, *args, **kwargs):
-        estabelecimento_destino = kwargs.pop('estabelecimento_destino', None)
-        super().__init__(*args, **kwargs)
-        if estabelecimento_destino:
-            self.fields['medicamento'].queryset = Medicamento.objects.filter(estoque__estabelecimento=estabelecimento_destino)
-
-
-
-
-from django import forms
 from .models import SaidaEstoque, DetalhesMedicamento, Medicamento, Estoque
 
 class SaidaEstoqueForm(forms.ModelForm):
@@ -445,3 +420,22 @@ class DistribuicaoMedicamentoForm(forms.ModelForm):
 
 
 
+from django import forms
+from django.forms import inlineformset_factory
+from .models import Requisicao, ItemRequisicao
+
+class RequisicaoForm(forms.ModelForm):
+    class Meta:
+        model = Requisicao
+        fields = ['estabelecimento_destino', 'observacoes']
+
+class ItemRequisicaoForm(forms.ModelForm):
+    class Meta:
+        model = ItemRequisicao
+        fields = ['medicamento', 'quantidade']
+
+# Criando um FormSet para adicionar vários medicamentos à requisição
+ItemRequisicaoFormSet = inlineformset_factory(
+    Requisicao, ItemRequisicao, form=ItemRequisicaoForm,
+    extra=1, can_delete=True
+)

@@ -357,82 +357,110 @@ class DistribuicaoMedicamento(models.Model):
         estoque_destino.quantidade += self.quantidade
         estoque_destino.save()
 
+from django.db import models, transaction
+from django.contrib.auth.models import User
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+
 class Requisicao(models.Model):
+    STATUS_CHOICES = [
+        ('Pendente', 'Pendente'),
+        ('Aprovada', 'Aprovada'),
+        ('Processando Transferência', 'Processando Transferência'),
+        ('Transferida', 'Transferida'),
+        ('Rejeitada', 'Rejeitada'),
+    ]
 
-    estabelecimento_origem = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='requisicoes_origem')
-    estabelecimento_destino = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='requisicoes_destino')
-    observacoes = models.CharField(max_length=100, blank=True, null=True)
+    estabelecimento_origem = models.ForeignKey(
+        "Estabelecimento", on_delete=models.CASCADE, related_name="requisicoes_origem"
+    )
+    estabelecimento_destino = models.ForeignKey(
+        "Estabelecimento", on_delete=models.CASCADE, related_name="requisicoes_destino"
+    )
+    observacoes = models.CharField(max_length=255, blank=True, null=True)
     data_requisicao = models.DateField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=[('Pendente', 'Pendente'), ('Aprovada', 'Aprovada'), ('Rejeitada', 'Rejeitada'), ('Transferida', 'Transferida')], default='Pendente')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="Pendente")
     data_aprovacao = models.DateField(null=True, blank=True)
-    usuario_aprovador = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='requisicoes_aprovadas')
-
+    usuario_aprovador = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="requisicoes_aprovadas"
+    )
 
     def aprovar(self, usuario):
-        """Aprova a requisição e altera o status."""
-        self.status = 'Aprovada'
+        """Aprova a requisição para que o estabelecimento de destino possa selecionar os lotes."""
+        if self.status != "Pendente":
+            raise ValidationError("A requisição já foi processada.")
+
+        self.status = "Aprovada"
         self.data_aprovacao = timezone.now()
         self.usuario_aprovador = usuario
         self.save()
 
     def rejeitar(self, usuario):
         """Rejeita a requisição e altera o status."""
-        self.status = 'Rejeitada'
+        if self.status != "Pendente":
+            raise ValidationError("A requisição já foi processada.")
+
+        self.status = "Rejeitada"
         self.data_aprovacao = timezone.now()
         self.usuario_aprovador = usuario
         self.save()
 
-    def __str__(self):
-        return f'Requisição de {self.estabelecimento_origem.nome} para {self.estabelecimento_destino.nome} - Status: {self.status}'
-    
+    def processar_transferencia(self):
+        """Muda o status da requisição para permitir que o destino selecione os lotes."""
+        if self.status != "Aprovada":
+            raise ValidationError("A requisição precisa estar aprovada antes de processar a transferência.")
+
+        self.status = "Processando Transferência"
+        self.save()
+
     def confirmar_transferencia(self):
-        """Confirma a transferência de todos os itens da requisição."""
-        if self.status != 'Aprovada':
-            raise ValidationError("A requisição precisa estar aprovada para confirmação de transferência.")
+        """Confirma a transferência dos medicamentos."""
+        if self.status != "Processando Transferência":
+            raise ValidationError("A requisição precisa estar em processamento para ser transferida.")
 
         with transaction.atomic():
             for item in self.itens.all():
                 item.transferir_estoque()
 
-            # Atualizar o status da requisição para Transferida
-            self.status = 'Transferida'
+            self.status = "Transferida"
             self.save()
 
+    def __str__(self):
+        return f"Requisição {self.id} - {self.estabelecimento_origem} → {self.estabelecimento_destino} ({self.status})"
 
 class ItemRequisicao(models.Model):
-    requisicao = models.ForeignKey(Requisicao, related_name='itens', on_delete=models.CASCADE)
-    medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
+    requisicao = models.ForeignKey(Requisicao, related_name="itens", on_delete=models.CASCADE)
+    medicamento = models.ForeignKey("Medicamento", on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField()
+    lote = models.ForeignKey("DetalhesMedicamento", null=True, blank=True, on_delete=models.SET_NULL)
 
     def transferir_estoque(self):
         """Realiza a transferência do estoque entre estabelecimentos."""
-        if self.requisicao.status != 'Aprovada':
-            raise ValidationError("A requisição precisa estar aprovada para que a transferência seja realizada.")
+        if self.requisicao.status != "Processando Transferência":
+            raise ValidationError("A requisição precisa estar em processamento para a transferência.")
 
-        # Verificar e atualizar o estoque do estabelecimento de origem
+        # Verificar e atualizar o estoque do estabelecimento de destino
         estoque_origem = DetalhesMedicamento.objects.get(
-            estabelecimento=self.requisicao.estabelecimento_origem, 
-            medicamento=self.medicamento
+            estabelecimento=self.requisicao.estabelecimento_destino, medicamento=self.medicamento
         )
-        if estoque_origem.quantidade < self.quantidade:
-            raise ValidationError("Estoque insuficiente para a transferência.")
 
-        # Atualizar estoque do estabelecimento de origem
+        if estoque_origem.quantidade < self.quantidade:
+            raise ValidationError("Estoque insuficiente no destino para a transferência.")
+
+        # Subtrai do destino
         estoque_origem.quantidade -= self.quantidade
         estoque_origem.save()
 
-        # Atualizar ou criar registro de estoque no estabelecimento de destino
-        estoque_destino, created = DetalhesMedicamento.objects.get_or_create(
-            estabelecimento=self.requisicao.estabelecimento_destino,
+        # Adiciona ao estabelecimento de origem
+        estoque_destino, _ = DetalhesMedicamento.objects.get_or_create(
+            estabelecimento=self.requisicao.estabelecimento_origem,
             medicamento=self.medicamento,
-            defaults={'quantidade': 0}
+            defaults={"quantidade": 0},
         )
         estoque_destino.quantidade += self.quantidade
         estoque_destino.save()
 
     def __str__(self):
-        return f'{self.quantidade} de {self.medicamento.nome} (Requisição {self.requisicao.id})'
-
-    
+        return f"{self.quantidade}x {self.medicamento.nome} (Requisição {self.requisicao.id})"
 
 

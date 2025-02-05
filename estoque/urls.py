@@ -5,8 +5,7 @@ from django.conf.urls.static import static
 from .views import saida_estoque,sucesso
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
-from .views import nova_requisicao, consultar_requisicoes, atender_requisicao, lotes_por_medicamento, distribuicao_sem_requisicao
-from .views import lista_requisicoes, RequisicaoDetailView, aprovar_requisicao, rejeitar_requisicao, confirmar_transferencia, criar_requisicao, atender_requisicao, consultar_requisicoes
+from .views import criar_requisicao, listar_requisicoes, responder_requisicao
 
 
 urlpatterns = [
@@ -40,18 +39,14 @@ urlpatterns = [
     path('estoque/dispensacoes/<int:id>/', views.detalhes_dispensacao, name='detalhes_dispensacao'),
     path('distribuicao_sem_requisicao/distribuicao_sem_requisicao/', views.distribuicao_sem_requisicao, name='distribuicao_sem_requisicao'),
     path('distribuicao/lista/', views.lista_distribuicoes, name='lista_distribuicoes'),
-    path('criar_requisicao/', views.criar_requisicao, name='criar_requisicao'),
-    path('consultar_requisicoes/', consultar_requisicoes, name='consultar_requisicoes'),
-    path('atender_requisicao/<int:requisicao_id>/', atender_requisicao, name='atender_requisicao'),
     path('password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
-    path('requisicoes/', lista_requisicoes, name='lista_requisicoes'),
-    path('requisicao/<int:pk>/', RequisicaoDetailView.as_view(), name='detalhe_requisicao'),
-    path('requisicao/<int:requisicao_id>/aprovar/', aprovar_requisicao, name='aprovar_requisicao'),
-    path('requisicao/<int:requisicao_id>/rejeitar/', rejeitar_requisicao, name='rejeitar_requisicao'),
-    path('requisicao/<int:requisicao_id>/confirmar-transferencia/', confirmar_transferencia, name='confirmar_transferencia'),
+    path('requisicoes/criar/', criar_requisicao, name='criar_requisicao'),
+    path('requisicoes/', listar_requisicoes, name='listar_requisicoes'),
+    path('requisicoes/<int:requisicao_id>/responder/', responder_requisicao, name='responder_requisicao'),
+  
     
 
 

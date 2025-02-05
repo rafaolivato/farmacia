@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Responder Requisição</h2>
+<p>Origem: {{ requisicao.estabelecimento_origem }}</p>
+<p>Destino: {{ requisicao.estabelecimento_destino }}</p>
+<p>Data: {{ requisicao.data_requisicao }}</p>
+
+<h3>Itens da Requisição</h3>
+<ul>
+    {% for item in requisicao.itens.all %}
+        <li>{{ item.medicamento.nome }} - Quantidade: {{ item.quantidade }}</li>
+    {% endfor %}
+</ul>
+
+<form method="POST">
+    {% csrf_token %}
+    <button type="submit">Confirmar Envio</button>
+</form>
+{% endblock %}
