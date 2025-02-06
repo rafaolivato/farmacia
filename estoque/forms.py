@@ -422,18 +422,17 @@ from django import forms
 from django.forms import inlineformset_factory
 from .models import Requisicao, ItemRequisicao
 
+from django import forms
+from .models import Requisicao, ItemRequisicao
+
 class RequisicaoForm(forms.ModelForm):
     class Meta:
         model = Requisicao
         fields = ['estabelecimento_destino', 'observacoes']
         widgets = {
             'estabelecimento_destino': forms.Select(attrs={'class': 'form-control'}),
-            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2 }),
+            'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Filtrar apenas estabelecimentos do tipo "Almoxarifado Central"
-        self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.filter(tipo_estabelecimento="Almoxarifado Central")
 
 class ItemRequisicaoForm(forms.ModelForm):
     class Meta:
@@ -443,6 +442,8 @@ class ItemRequisicaoForm(forms.ModelForm):
             'medicamento': forms.Select(attrs={'class': 'form-control'}),
             'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
         }
+
+      
 
 # Criando um FormSet para adicionar vários medicamentos à requisição
 ItemRequisicaoFormSet = inlineformset_factory(

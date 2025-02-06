@@ -1,43 +1,75 @@
 {% extends 'estoque/base.html' %}
+
 {% block content %}
-<h2>Criar Nova Requisição</h2>
+<div class="container mt-4">
+    <h2>Criar Requisição</h2>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <!-- Exibe os campos do formulário principal -->
+        <div class="mb-3">
+            {{ form.as_p }}
+        </div>
 
-<form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
+        <!-- Importante: Adiciona os campos ocultos do Django para controle do formset -->
+        {{ formset.management_form }}
 
-    <h3>Itens da Requisição</h3>
-    {{ formset.management_form }}
-    <div id="formset-container">
-        {% for form in formset %}
-            <div class="formset-item">
-                {{ form.as_p }}
-            </div>
-        {% endfor %}
-    </div>
+        <!-- Container onde os formulários de medicamentos serão adicionados -->
+        <div id="formset-container">
+            {% for form in formset %}
+                <div class="formset-item border p-3 mb-2">
+                    {{ form.as_p }}
+                </div>
+            {% endfor %}
+        </div>
 
-    <button type="button" id="add-item">Adicionar Medicamento</button>
-    <button type="submit">Salvar</button>
-</form>
+        <!-- Botão para adicionar novos formulários -->
+        <button id="add-item" type="button" class="btn btn-primary">Adicionar Medicamento</button>
+        
+        <!-- Botão para enviar a requisição -->
+        <button type="submit" class="btn btn-success">Salvar Requisição</button>
+    </form>
+</div>
 
+<!-- JavaScript para adicionar dinamicamente novos itens ao formset -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     let formsetContainer = document.getElementById("formset-container");
     let totalForms = document.querySelector("#id_itemrequisicao_set-TOTAL_FORMS");
     let addItemButton = document.getElementById("add-item");
 
+    if (!totalForms) {
+        console.error("Campo TOTAL_FORMS não encontrado! Verifique se {{ formset.management_form }} foi incluído.");
+        return;
+    }
+
+    if (!addItemButton) {
+        console.error("Botão 'Adicionar Medicamento' não encontrado!");
+        return;
+    }
+
     addItemButton.addEventListener("click", function() {
         let formCount = parseInt(totalForms.value);
+
+        // Clona o primeiro formulário existente
         let newForm = formsetContainer.firstElementChild.cloneNode(true);
-        let regex = new RegExp(`-${formCount-1}-`, "g");
-        newForm.innerHTML = newForm.innerHTML.replace(regex, `-${formCount}-`);
-        
+
+        // Substitui os índices nos IDs e Names para corresponder ao novo item
+        newForm.innerHTML = newForm.innerHTML.replace(/-\d+-/g, `-${formCount}-`);
+
+        // Limpa os valores dos campos de entrada
+        newForm.querySelectorAll("input, select").forEach(input => {
+            if (input.type !== "hidden") input.value = "";
+        });
+
         // Adiciona o novo formulário ao container
         formsetContainer.appendChild(newForm);
-        
-        // Atualiza o número total de formulários
+
+        // Atualiza o contador total de formulários
         totalForms.value = formCount + 1;
     });
 });
 </script>
 {% endblock %}
+
