@@ -377,7 +377,7 @@ class Requisicao(models.Model):
     estabelecimento_destino = models.ForeignKey(
         "Estabelecimento", on_delete=models.CASCADE, related_name="requisicoes_destino"
     )
-    observacoes = models.CharField(max_length=255, blank=True, null=True)
+    observacoes = models.CharField(max_length=255, blank=True, null=True, verbose_name="Observações")
     data_requisicao = models.DateField(auto_now_add=True)
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="Pendente")
     data_aprovacao = models.DateField(null=True, blank=True)

@@ -683,33 +683,35 @@ def lista_distribuicoes(request):
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.forms import modelformset_factory
+from django.forms import modelformset_factory, inlineformset_factory
 from .models import Requisicao, ItemRequisicao
 from .forms import RequisicaoForm, ItemRequisicaoFormSet
 
 # Criar uma nova requisição
-@login_required
+from django.shortcuts import render, redirect
+from django.forms import inlineformset_factory
+from .models import Requisicao, ItemRequisicao
+from .forms import RequisicaoForm
+
 def criar_requisicao(request):
+    ItemRequisicaoFormSet = inlineformset_factory(Requisicao, ItemRequisicao, fields=('medicamento', 'quantidade', 'lote'), extra=1, can_delete=True)
+    
     if request.method == "POST":
         form = RequisicaoForm(request.POST)
         formset = ItemRequisicaoFormSet(request.POST)
 
         if form.is_valid() and formset.is_valid():
-            requisicao = form.save(commit=False)
-            requisicao.estabelecimento_origem = request.user.profile.estabelecimento  # Supondo que o usuário tenha um estabelecimento vinculado
-            requisicao.save()
+            requisicao = form.save()
+            formset.instance = requisicao
+            formset.save()
+            return redirect('estoque/sucesso.html')  # Redirecione para onde desejar
 
-            itens = formset.save(commit=False)
-            for item in itens:
-                item.requisicao = requisicao
-                item.save()
-
-            return redirect('listar_requisicoes')  # Redireciona para a lista de requisições
     else:
         form = RequisicaoForm()
         formset = ItemRequisicaoFormSet()
 
     return render(request, 'estoque/criar_requisicao.html', {'form': form, 'formset': formset})
+
 
 # Listar requisições pendentes para o estabelecimento de destino
 @login_required

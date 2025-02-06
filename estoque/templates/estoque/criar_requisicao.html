@@ -1,14 +1,43 @@
 {% extends 'estoque/base.html' %}
 {% block content %}
 <h2>Criar Nova Requisição</h2>
+
 <form method="POST">
     {% csrf_token %}
     {{ form.as_p }}
+
     <h3>Itens da Requisição</h3>
     {{ formset.management_form }}
-    {% for form in formset %}
-        {{ form.as_p }}
-    {% endfor %}
+    <div id="formset-container">
+        {% for form in formset %}
+            <div class="formset-item">
+                {{ form.as_p }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <button type="button" id="add-item">Adicionar Medicamento</button>
     <button type="submit">Salvar</button>
 </form>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let formsetContainer = document.getElementById("formset-container");
+    let totalForms = document.querySelector("#id_itemrequisicao_set-TOTAL_FORMS");
+    let addItemButton = document.getElementById("add-item");
+
+    addItemButton.addEventListener("click", function() {
+        let formCount = parseInt(totalForms.value);
+        let newForm = formsetContainer.firstElementChild.cloneNode(true);
+        let regex = new RegExp(`-${formCount-1}-`, "g");
+        newForm.innerHTML = newForm.innerHTML.replace(regex, `-${formCount}-`);
+        
+        // Adiciona o novo formulário ao container
+        formsetContainer.appendChild(newForm);
+        
+        // Atualiza o número total de formulários
+        totalForms.value = formCount + 1;
+    });
+});
+</script>
 {% endblock %}
