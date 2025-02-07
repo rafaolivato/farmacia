@@ -87,7 +87,31 @@
         });
     });
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const estabelecimentoDestino = document.getElementById("id_estabelecimento_destino");
+    const medicamentoSelect = document.getElementById("id_medicamento");
 
+    if (estabelecimentoDestino) {
+        estabelecimentoDestino.addEventListener("change", function() {
+            const estabelecimentoId = this.value;
+            
+            if (estabelecimentoId) {
+                fetch(`/api/medicamentos_por_estabelecimento/${estabelecimentoId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        medicamentoSelect.innerHTML = ""; // Limpa os medicamentos anteriores
+                        data.forEach(item => {
+                            let option = new Option(item.medicamento__nome, item.medicamento__id);
+                            medicamentoSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => console.error("Erro ao carregar medicamentos:", error));
+            }
+        });
+    }
+});
+</script>
 
 {% endblock %}
 

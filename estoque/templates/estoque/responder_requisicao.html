@@ -1,8 +1,7 @@
 {% extends 'estoque/base.html' %}
-
-{% block content %}
 {% load custom_filters %}
 
+{% block content %}
 <div class="container">
     <h2 class="my-4">Responder Requisição #{{ requisicao.id }}</h2>
 
@@ -28,12 +27,12 @@
                     <td>{{ item.medicamento.nome }}</td>
                     <td>{{ item.quantidade }}</td>
                     <td>
-                        <select name="form-{{ forloop.counter0 }}-lote" class="form-control">
+                        <select name="form-{{ item.id }}-lote" class="form-control">
                             <option value="">Selecione um lote</option>
                             {% if lotes_disponiveis|get_item:item.medicamento %}
                                 {% for lote in lotes_disponiveis|get_item:item.medicamento %}
                                     <option value="{{ lote.id }}">
-                                        Lote: {{ lote.codigo }} | Validade: {{ lote.validade }} | Qtd: {{ lote.quantidade }}
+                                        Lote: {{ lote.codigo }} | Validade: {{ lote.validade|date:"d/m/Y" }} | Qtd: {{ lote.quantidade }}
                                     </option>
                                 {% endfor %}
                             {% else %}
@@ -42,16 +41,14 @@
                         </select>
                     </td>
                     <td>
-                        <input type="number" name="form-{{ forloop.counter0 }}-quantidade_selecionada" 
-                               class="form-control" min="1">
+                        <input type="number" name="form-{{ item.id }}-quantidade_selecionada" class="form-control" min="1">
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
 
-        <button type="submit" class="btn btn-primary">Confirmar Envio</button>
+        <button type="submit" class="btn btn-success">Confirmar Envio</button>
     </form>
 </div>
-
 {% endblock %}

@@ -701,7 +701,7 @@ def criar_requisicao(request):
         formset = ItemRequisicaoFormSet(request.POST)
 
         if form.is_valid() and formset.is_valid():
-            requisicao = form.save(commit=False)  # Não salva ainda
+            requisicao = form.save(commit=False)  # Criar a requisição sem salvar ainda
 
             # Definir o estabelecimento de origem como o do usuário logado
             if hasattr(request.user, 'profile') and request.user.profile.estabelecimento:
@@ -711,17 +711,19 @@ def criar_requisicao(request):
                 return redirect('criar_requisicao')
 
             requisicao.save()  # Agora salva a requisição no banco
-            formset.instance = requisicao  # Define a requisição nos itens
-            formset.save()
+           
+            formset.instance = requisicao  # Associa os itens à requisição salva
+            formset.save()  # Agora pode salvar os itens
 
             messages.success(request, "Requisição criada com sucesso!")
-            return redirect('listar_requisicoes')  # Redirecione para a lista de requisições
+            return redirect('listar_requisicoes')  # Redireciona para a lista de requisições
 
     else:
         form = RequisicaoForm()
         formset = ItemRequisicaoFormSet()
 
     return render(request, 'estoque/criar_requisicao.html', {'form': form, 'formset': formset})
+
 
 
 
@@ -743,8 +745,6 @@ from .forms import LoteSelecionadoFormSet
 @login_required
 def responder_requisicao(request, requisicao_id):
     requisicao = get_object_or_404(Requisicao, id=requisicao_id, estabelecimento_destino=request.user.profile.estabelecimento)
-
-    # Pegando os itens da requisição
     itens_requisicao = requisicao.itens.all()
 
     # Criando um dicionário com os lotes disponíveis para cada medicamento
@@ -752,15 +752,37 @@ def responder_requisicao(request, requisicao_id):
         item.medicamento: DetalhesMedicamento.objects.filter(
             medicamento=item.medicamento,
             quantidade__gt=0,
-            estabelecimento=request.user.profile.estabelecimento  # ✅ Filtrando corretamente pelo estabelecimento
-        ).order_by('validade')  # Ordenando pela validade para facilitar a escolha do lote mais antigo
+            estabelecimento=request.user.profile.estabelecimento
+        ).order_by('validade')
         for item in itens_requisicao
     }
 
     if request.method == "POST":
-        # Aqui você pode processar a escolha dos lotes e enviar a resposta ao estabelecimento de origem.
-        requisicao.status = 'Aprovada'  # Ou outro status que faça sentido
+        for item in itens_requisicao:
+            lote_id = request.POST.get(f'form-{item.id}-lote')
+            quantidade_enviada = int(request.POST.get(f'form-{item.id}-quantidade_selecionada', 0))
+
+            if lote_id and quantidade_enviada > 0:
+                lote = get_object_or_404(DetalhesMedicamento, id=lote_id)
+
+                if quantidade_enviada > lote.quantidade:
+                    messages.error(request, f"Estoque insuficiente para {item.medicamento.nome} (Lote {lote.codigo})!")
+                    return redirect('responder_requisicao', requisicao_id=requisicao.id)
+
+                # Atualiza o estoque
+                lote.quantidade -= quantidade_enviada
+                lote.save()
+
+                # Atualiza o item da requisição
+                item.lote_selecionado = lote
+                item.quantidade_enviada = quantidade_enviada
+                item.save()
+
+        # Muda status da requisição para 'Aprovada'
+        requisicao.status = 'Aprovada'
         requisicao.save()
+
+        messages.success(request, "Medicamentos enviados com sucesso!")
         return redirect('listar_requisicoes')
 
     return render(request, 'estoque/responder_requisicao.html', {
@@ -769,4 +791,52 @@ def responder_requisicao(request, requisicao_id):
         'lotes_disponiveis': lotes_disponiveis
     })
 
+from django.http import JsonResponse
+from .models import Estoque, Medicamento
 
+@login_required
+def medicamentos_por_estabelecimento(request, estabelecimento_id):
+    """Retorna os medicamentos disponíveis em um determinado estabelecimento."""
+    medicamentos = Estoque.objects.filter(estabelecimento_id=estabelecimento_id).values(
+        "medicamento__id", "medicamento__nome"
+    ).distinct()
+
+    return JsonResponse(list(medicamentos), safe=False)
+
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db import transaction
+from .models import Requisicao
+
+@login_required
+def confirmar_requisicao(request, requisicao_id):
+    """Confirma a transferência dos medicamentos e adiciona ao estoque do estabelecimento de origem."""
+    requisicao = get_object_or_404(Requisicao, id=requisicao_id)
+
+    # Verifica se o usuário tem permissão para aceitar essa requisição
+    if requisicao.estabelecimento_destino != request.user.profile.estabelecimento:
+        messages.error(request, "Você não tem permissão para confirmar esta requisição.")
+        return redirect("receber_requisicoes")
+
+    # Confirma a transferência e adiciona ao estoque
+    try:
+        with transaction.atomic():
+            requisicao.confirmar_transferencia()
+            messages.success(request, "Requisição confirmada com sucesso! Estoque atualizado.")
+    except Exception as e:
+        messages.error(request, f"Erro ao confirmar requisição: {e}")
+
+    return redirect("receber_requisicoes")  # Redireciona para a lista de requisições
+
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from .models import Requisicao
+
+@login_required
+def receber_requisicoes(request):
+    """Lista as requisições pendentes para confirmação pelo estabelecimento de destino."""
+    estabelecimento = request.user.profile.estabelecimento
+    requisicoes = Requisicao.objects.filter(estabelecimento_destino=estabelecimento, status="Processando Transferência")
+
+    return render(request, "estoque/receber_requisicoes.html", {"requisicoes": requisicoes})

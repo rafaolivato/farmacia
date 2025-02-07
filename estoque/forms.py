@@ -440,16 +440,27 @@ class RequisicaoForm(forms.ModelForm):
         self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.filter(tipo_estabelecimento="Almoxarifado Central")
 
 
+
+       
+
+      
 class ItemRequisicaoForm(forms.ModelForm):
     class Meta:
         model = ItemRequisicao
-        fields = ['medicamento', 'quantidade']
+        fields = ["medicamento", "quantidade"]
         widgets = {
             'medicamento': forms.Select(attrs={'class': 'form-control'}),
             'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
-      
+    def __init__(self, *args, **kwargs):
+        estabelecimento_destino = kwargs.pop("estabelecimento_destino", None)
+        super().__init__(*args, **kwargs)
+
+        if estabelecimento_destino:
+            self.fields["medicamento"].queryset = Medicamento.objects.filter(
+                estoque__estabelecimento=estabelecimento_destino
+            ).distinct()
 
 # Criando um FormSet para adicionar vários medicamentos à requisição
 ItemRequisicaoFormSet = inlineformset_factory(
