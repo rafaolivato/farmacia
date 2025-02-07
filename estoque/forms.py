@@ -434,6 +434,12 @@ class RequisicaoForm(forms.ModelForm):
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filtrar apenas estabelecimentos do tipo "Almoxarifado Central"
+        self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.filter(tipo_estabelecimento="Almoxarifado Central")
+
+
 class ItemRequisicaoForm(forms.ModelForm):
     class Meta:
         model = ItemRequisicao
@@ -450,3 +456,18 @@ ItemRequisicaoFormSet = inlineformset_factory(
     Requisicao, ItemRequisicao, form=ItemRequisicaoForm,
     extra=1, can_delete=True
 )
+
+
+from django import forms
+from django.forms import formset_factory
+from .models import DetalhesMedicamento
+
+class LoteSelecionadoForm(forms.Form):
+    lote = forms.ModelChoiceField(
+        queryset=DetalhesMedicamento.objects.none(), 
+        empty_label="Selecione um lote", 
+        label="Lote"
+    )
+    quantidade_selecionada = forms.IntegerField(min_value=1, label="Quantidade")
+
+LoteSelecionadoFormSet = formset_factory(LoteSelecionadoForm, extra=0)

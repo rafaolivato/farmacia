@@ -56,3 +56,14 @@ from .models import Profile
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'estabelecimento')
     list_filter = ('estabelecimento',)
+
+from django.contrib import admin
+from .models import Requisicao
+
+@admin.register(Requisicao)
+class RequisicaoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'estabelecimento_origem', 'estabelecimento_destino', 'status', 'data_requisicao')
+    list_filter = ('estabelecimento_destino', 'status')
+    search_fields = ('id', 'estabelecimento_origem__nome', 'estabelecimento_destino__nome')
+    ordering = ('-data_requisicao',)
+

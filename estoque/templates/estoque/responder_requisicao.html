@@ -1,19 +1,57 @@
-{% extends 'base.html' %}
+{% extends 'estoque/base.html' %}
+
 {% block content %}
-<h2>Responder Requisição</h2>
-<p>Origem: {{ requisicao.estabelecimento_origem }}</p>
-<p>Destino: {{ requisicao.estabelecimento_destino }}</p>
-<p>Data: {{ requisicao.data_requisicao }}</p>
+{% load custom_filters %}
 
-<h3>Itens da Requisição</h3>
-<ul>
-    {% for item in requisicao.itens.all %}
-        <li>{{ item.medicamento.nome }} - Quantidade: {{ item.quantidade }}</li>
-    {% endfor %}
-</ul>
+<div class="container">
+    <h2 class="my-4">Responder Requisição #{{ requisicao.id }}</h2>
 
-<form method="POST">
-    {% csrf_token %}
-    <button type="submit">Confirmar Envio</button>
-</form>
+    <p><strong>Origem:</strong> {{ requisicao.estabelecimento_origem }}</p>
+    <p><strong>Destino:</strong> {{ requisicao.estabelecimento_destino }}</p>
+    <p><strong>Status:</strong> {{ requisicao.status }}</p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        <table class="table table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>Medicamento</th>
+                    <th>Quantidade Solicitada</th>
+                    <th>Lote Disponível</th>
+                    <th>Quantidade a Enviar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in itens_requisicao %}
+                <tr>
+                    <td>{{ item.medicamento.nome }}</td>
+                    <td>{{ item.quantidade }}</td>
+                    <td>
+                        <select name="form-{{ forloop.counter0 }}-lote" class="form-control">
+                            <option value="">Selecione um lote</option>
+                            {% if lotes_disponiveis|get_item:item.medicamento %}
+                                {% for lote in lotes_disponiveis|get_item:item.medicamento %}
+                                    <option value="{{ lote.id }}">
+                                        Lote: {{ lote.codigo }} | Validade: {{ lote.validade }} | Qtd: {{ lote.quantidade }}
+                                    </option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="">Sem lotes disponíveis</option>
+                            {% endif %}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" name="form-{{ forloop.counter0 }}-quantidade_selecionada" 
+                               class="form-control" min="1">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button type="submit" class="btn btn-primary">Confirmar Envio</button>
+    </form>
+</div>
+
 {% endblock %}

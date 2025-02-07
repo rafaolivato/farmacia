@@ -681,40 +681,48 @@ def lista_distribuicoes(request):
     distribuicoes = Distribuicao.objects.all()
     return render(request, 'estoque/lista_distribuicoes.html', {'distribuicoes': distribuicoes})
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.forms import modelformset_factory, inlineformset_factory
-from .models import Requisicao, ItemRequisicao
-from .forms import RequisicaoForm, ItemRequisicaoFormSet
-
-# Criar uma nova requisição
 from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.forms import inlineformset_factory
 from .models import Requisicao, ItemRequisicao
-from .forms import RequisicaoForm, ItemRequisicaoForm  # Adicione o ItemRequisicaoForm
+from .forms import RequisicaoForm, ItemRequisicaoForm
 
+@login_required
 def criar_requisicao(request):
     ItemRequisicaoFormSet = inlineformset_factory(
         Requisicao, ItemRequisicao,
-        form=ItemRequisicaoForm,  # Aplica o formulário com form-control
+        form=ItemRequisicaoForm,  
         extra=1, can_delete=True
     )
-    
+
     if request.method == "POST":
         form = RequisicaoForm(request.POST)
         formset = ItemRequisicaoFormSet(request.POST)
 
         if form.is_valid() and formset.is_valid():
-            requisicao = form.save()
-            formset.instance = requisicao
+            requisicao = form.save(commit=False)  # Não salva ainda
+
+            # Definir o estabelecimento de origem como o do usuário logado
+            if hasattr(request.user, 'profile') and request.user.profile.estabelecimento:
+                requisicao.estabelecimento_origem = request.user.profile.estabelecimento
+            else:
+                messages.error(request, "Você não tem um estabelecimento associado.")
+                return redirect('criar_requisicao')
+
+            requisicao.save()  # Agora salva a requisição no banco
+            formset.instance = requisicao  # Define a requisição nos itens
             formset.save()
-            return redirect('estoque/sucesso.html')  # Redirecione para onde desejar
+
+            messages.success(request, "Requisição criada com sucesso!")
+            return redirect('listar_requisicoes')  # Redirecione para a lista de requisições
 
     else:
         form = RequisicaoForm()
         formset = ItemRequisicaoFormSet()
 
     return render(request, 'estoque/criar_requisicao.html', {'form': form, 'formset': formset})
+
 
 
 
@@ -726,9 +734,28 @@ def listar_requisicoes(request):
     return render(request, 'estoque/listar_requisicoes.html', {'requisicoes': requisicoes})
 
 # Responder a uma requisição (selecionando lote e confirmando envio)
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from .models import Requisicao, ItemRequisicao, DetalhesMedicamento
+from .forms import LoteSelecionadoFormSet
+
 @login_required
 def responder_requisicao(request, requisicao_id):
     requisicao = get_object_or_404(Requisicao, id=requisicao_id, estabelecimento_destino=request.user.profile.estabelecimento)
+
+    # Pegando os itens da requisição
+    itens_requisicao = requisicao.itens.all()
+
+    # Criando um dicionário com os lotes disponíveis para cada medicamento
+    lotes_disponiveis = {
+        item.medicamento: DetalhesMedicamento.objects.filter(
+            medicamento=item.medicamento,
+            quantidade__gt=0,
+            estabelecimento=request.user.profile.estabelecimento  # ✅ Filtrando corretamente pelo estabelecimento
+        ).order_by('validade')  # Ordenando pela validade para facilitar a escolha do lote mais antigo
+        for item in itens_requisicao
+    }
 
     if request.method == "POST":
         # Aqui você pode processar a escolha dos lotes e enviar a resposta ao estabelecimento de origem.
@@ -736,4 +763,10 @@ def responder_requisicao(request, requisicao_id):
         requisicao.save()
         return redirect('listar_requisicoes')
 
-    return render(request, 'estoque/responder_requisicao.html', {'requisicao': requisicao})
+    return render(request, 'estoque/responder_requisicao.html', {
+        'requisicao': requisicao,
+        'itens_requisicao': itens_requisicao,
+        'lotes_disponiveis': lotes_disponiveis
+    })
+
+
