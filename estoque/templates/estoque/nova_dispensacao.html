@@ -69,23 +69,23 @@
 
 <!-- Aqui você insere o script com a lista de medicamentos -->
 <script>
-    /* eslint-disable */
-    const medicamentosDisponiveis = [
-        {% for medicamento in medicamentos_disponiveis %}
-            { id: "{{ medicamento.id }}", nome: "{{ medicamento.nome }}" },
-        {% endfor %}
-    ];
-    /* eslint-disable */
-</script>
-
-<!-- Script existente para adicionar/remover medicamentos -->
-<script>
     document.addEventListener('DOMContentLoaded', function() {
-        const formsetPrefix = '{{ formset.prefix }}';
+        const formsetPrefix = "{{ formset.prefix }}";
         const totalFormsInput = document.querySelector(`#id_${formsetPrefix}-TOTAL_FORMS`);
         const tableBody = document.querySelector('#medicamentos-table tbody');
         const addMedicamentoButton = document.getElementById('add-medicamento');
-    
+
+        if (!totalFormsInput || !tableBody || !addMedicamentoButton) {
+            console.error("Erro: Elementos essenciais do formset não encontrados.");
+            return;
+        }
+
+        // Verifica se a variável medicamentosDisponiveis está definida
+        if (typeof medicamentosDisponiveis === 'undefined') {
+            console.error("Erro: A variável 'medicamentosDisponiveis' não foi definida no template.");
+            return;
+        }
+
         addMedicamentoButton.addEventListener('click', function() {
             const formCount = parseInt(totalFormsInput.value);
     
@@ -107,35 +107,25 @@
             tableBody.insertAdjacentHTML('beforeend', newFormHtml);
             totalFormsInput.value = formCount + 1;
         });
-    
+
         tableBody.addEventListener('click', function(event) {
             if (event.target.classList.contains('remove-form-row')) {
                 const formRow = event.target.closest('tr');
                 formRow.remove();
-    
-                // Atualiza os índices
-                const formRows = document.querySelectorAll("#medicamentos-table tbody tr");
+
+                // Atualiza os índices corretamente
+                const formRows = tableBody.querySelectorAll("tr");
                 totalFormsInput.value = formRows.length;
-    
+
                 formRows.forEach((row, index) => {
-                    const inputs = row.querySelectorAll('input, select');
-                    inputs.forEach(input => {
+                    row.querySelectorAll('input, select').forEach(input => {
                         input.name = input.name.replace(/-\d+-/, `-${index}-`);
                         input.id = input.id.replace(/-\d+-/, `-${index}-`);
                     });
                 });
             }
         });
-    
-        // Gerador de número de notificação
-        const generateNotificationButton = document.getElementById('generate-notification-number');
-        generateNotificationButton.addEventListener('click', function() {
-            const notificationNumberField = document.getElementById('id_numero_notificacao');
-            const randomNumber = Math.floor(100000 + Math.random() * 900000);
-            notificationNumberField.value = randomNumber;
-        });
     });
-    
 </script>
 
 {% endblock %}

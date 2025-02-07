@@ -18,11 +18,21 @@
         <!-- Container onde os formulários de medicamentos serão adicionados -->
         <div id="formset-container">
             {% for form in formset %}
-                <div class="formset-item border p-3 mb-2">
-                    {{ form.as_p }}
+                <div class="formset-item">
+                    {{ form.non_field_errors }}
+                    <div>
+                        <label>{{ form.medicamento.label }}</label>
+                        {{ form.medicamento }}
+                    </div>
+                    <div>
+                        <label>{{ form.quantidade.label }}</label>
+                        {{ form.quantidade }}
+                    </div>
+                    {{ form.id }}  <!-- Campo oculto necessário para Django rastrear os formulários -->
                 </div>
             {% endfor %}
         </div>
+        
 
         <!-- Botão para adicionar novos formulários -->
         <button id="add-item" type="button" class="btn btn-primary">Adicionar Medicamento</button>
@@ -32,44 +42,52 @@
     </form>
 </div>
 
-<!-- JavaScript para adicionar dinamicamente novos itens ao formset -->
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    let formsetContainer = document.getElementById("formset-container");
-    let totalForms = document.querySelector("#id_itemrequisicao_set-TOTAL_FORMS");
-    let addItemButton = document.getElementById("add-item");
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("Script carregado!"); // Verifica se o script está sendo executado
 
-    if (!totalForms) {
-        console.error("Campo TOTAL_FORMS não encontrado! Verifique se {{ formset.management_form }} foi incluído.");
-        return;
-    }
+        const formsetContainer = document.querySelector('#formset-container');
+        const addButton = document.querySelector('#add-item');
+        const totalFormsInput = document.querySelector('input[name$="-TOTAL_FORMS"]'); // Captura o campo de controle do Django
 
-    if (!addItemButton) {
-        console.error("Botão 'Adicionar Medicamento' não encontrado!");
-        return;
-    }
+        // Verifica se os elementos foram encontrados
+        if (!formsetContainer || !addButton || !totalFormsInput) {
+            console.error("Erro: Elementos do formset não encontrados.");
+            return;
+        }
 
-    addItemButton.addEventListener("click", function() {
-        let formCount = parseInt(totalForms.value);
+        console.log("Elementos encontrados com sucesso!");
 
-        // Clona o primeiro formulário existente
-        let newForm = formsetContainer.firstElementChild.cloneNode(true);
+        addButton.addEventListener('click', function() {
+            const formCount = parseInt(totalFormsInput.value);
+            const firstForm = formsetContainer.querySelector('.formset-item');
 
-        // Substitui os índices nos IDs e Names para corresponder ao novo item
-        newForm.innerHTML = newForm.innerHTML.replace(/-\d+-/g, `-${formCount}-`);
+            if (!firstForm) {
+                console.error("Erro: Nenhum formulário encontrado no formset.");
+                return;
+            }
 
-        // Limpa os valores dos campos de entrada
-        newForm.querySelectorAll("input, select").forEach(input => {
-            if (input.type !== "hidden") input.value = "";
+            // Clona o primeiro formulário existente
+            const newForm = firstForm.cloneNode(true);
+
+            // Atualiza os atributos de name e id dos inputs dentro do novo formulário
+            newForm.querySelectorAll('input, select').forEach(field => {
+                if (field.name) {
+                    field.name = field.name.replace(/-\d+-/, `-${formCount}-`);
+                    field.id = field.id.replace(/-\d+-/, `-${formCount}-`);
+                    field.value = field.tagName === "SELECT" ? field.options[0].value : "";  // Resetando valor do campo
+                }
+            });
+
+            // Adiciona o novo formulário ao container
+            formsetContainer.appendChild(newForm);
+            totalFormsInput.value = formCount + 1;
+
+            console.log("Novo formulário adicionado:", newForm);
         });
-
-        // Adiciona o novo formulário ao container
-        formsetContainer.appendChild(newForm);
-
-        // Atualiza o contador total de formulários
-        totalForms.value = formCount + 1;
     });
-});
 </script>
+
+
 {% endblock %}
 
