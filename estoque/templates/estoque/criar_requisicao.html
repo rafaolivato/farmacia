@@ -15,6 +15,11 @@
         <!-- Importante: Adiciona os campos ocultos do Django para controle do formset -->
         {{ formset.management_form }}
 
+        <!-- Adicionando manualmente o campo TOTAL_FORMS -->
+        <input type="hidden" name="{{ formset.prefix }}-TOTAL_FORMS" 
+               value="{{ formset.total_form_count }}" 
+               id="id_{{ formset.prefix }}-TOTAL_FORMS">
+
         <!-- Container onde os formulários de medicamentos serão adicionados -->
         <div id="formset-container">
             {% for form in formset %}
@@ -33,7 +38,7 @@
             {% endfor %}
         </div>
         
-
+        <br>
         <!-- Botão para adicionar novos formulários -->
         <button id="add-item" type="button" class="btn btn-primary">Adicionar Medicamento</button>
         
@@ -43,75 +48,63 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log("Script carregado!"); // Verifica se o script está sendo executado
-
-        const formsetContainer = document.querySelector('#formset-container');
-        const addButton = document.querySelector('#add-item');
-        const totalFormsInput = document.querySelector('input[name$="-TOTAL_FORMS"]'); // Captura o campo de controle do Django
-
-        // Verifica se os elementos foram encontrados
-        if (!formsetContainer || !addButton || !totalFormsInput) {
-            console.error("Erro: Elementos do formset não encontrados.");
-            return;
-        }
-
-        console.log("Elementos encontrados com sucesso!");
-
-        addButton.addEventListener('click', function() {
+    document.addEventListener("DOMContentLoaded", function() {
+        const addButton = document.getElementById("add-item");
+        const formsetContainer = document.getElementById("formset-container");
+        const totalFormsInput = document.getElementById("id_{{ formset.prefix }}-TOTAL_FORMS");
+        const estabelecimentoDestino = document.getElementById("id_estabelecimento_destino");
+    
+        addButton.addEventListener("click", function() {
             const formCount = parseInt(totalFormsInput.value);
             const firstForm = formsetContainer.querySelector('.formset-item');
-
+        
             if (!firstForm) {
                 console.error("Erro: Nenhum formulário encontrado no formset.");
                 return;
             }
-
-            // Clona o primeiro formulário existente
+        
             const newForm = firstForm.cloneNode(true);
-
-            // Atualiza os atributos de name e id dos inputs dentro do novo formulário
+        
             newForm.querySelectorAll('input, select').forEach(field => {
                 if (field.name) {
                     field.name = field.name.replace(/-\d+-/, `-${formCount}-`);
                     field.id = field.id.replace(/-\d+-/, `-${formCount}-`);
-                    field.value = field.tagName === "SELECT" ? field.options[0].value : "";  // Resetando valor do campo
+                    field.value = field.tagName === "SELECT" ? field.options[0].value : "";  
                 }
             });
-
-            // Adiciona o novo formulário ao container
+        
             formsetContainer.appendChild(newForm);
             totalFormsInput.value = formCount + 1;
-
+    
             console.log("Novo formulário adicionado:", newForm);
         });
+    
+        if (estabelecimentoDestino) {
+            estabelecimentoDestino.addEventListener("change", function() {
+                const estabelecimentoId = this.value;
+                
+                if (estabelecimentoId) {
+                    fetch(`/api/medicamentos_por_estabelecimento/${estabelecimentoId}/`)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`Erro HTTP: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            document.querySelectorAll('[name$="-medicamento"]').forEach(select => {
+                                select.innerHTML = "<option value=''>Selecione um medicamento</option>";
+                                data.forEach(item => {
+                                    let option = new Option(item.nome, item.id);
+                                    select.appendChild(option);
+                                });
+                            });
+                        })
+                        .catch(error => console.error("Erro ao carregar medicamentos:", error));
+                }
+            });
+        }
     });
-</script>
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const estabelecimentoDestino = document.getElementById("id_estabelecimento_destino");
-    const medicamentoSelect = document.getElementById("id_medicamento");
-
-    if (estabelecimentoDestino) {
-        estabelecimentoDestino.addEventListener("change", function() {
-            const estabelecimentoId = this.value;
-            
-            if (estabelecimentoId) {
-                fetch(`/api/medicamentos_por_estabelecimento/${estabelecimentoId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        medicamentoSelect.innerHTML = ""; // Limpa os medicamentos anteriores
-                        data.forEach(item => {
-                            let option = new Option(item.medicamento__nome, item.medicamento__id);
-                            medicamentoSelect.appendChild(option);
-                        });
-                    })
-                    .catch(error => console.error("Erro ao carregar medicamentos:", error));
-            }
-        });
-    }
-});
 </script>
 
 {% endblock %}
-

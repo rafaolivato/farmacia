@@ -414,19 +414,20 @@ class Requisicao(models.Model):
         self.save()
 
     def confirmar_transferencia(self):
-        """Confirma a transferência dos medicamentos."""
-        if self.status != "Processando Transferência":
-            raise ValidationError("A requisição precisa estar em processamento para ser transferida.")
-
+        """Confirma a transferência dos medicamentos, permitindo que o medicamento entre no estoque mesmo sem estar 'Processando Transferência'."""
+        
+        if self.status not in ["Aprovada"]:
+            raise ValidationError("A requisição precisa estar em um status apropriado para ser transferida.")
+        
         with transaction.atomic():
             for item in self.itens.all():
-                item.transferir_estoque()
-
-            self.status = "Transferida"
+                item.transferir_estoque()  # Este método vai adicionar o medicamento ao estoque do estabelecimento
+            
+            self.status = "Transferida"  # Atualize o status conforme necessário
             self.save()
 
-    def __str__(self):
-        return f"Requisição {self.id} - {self.estabelecimento_origem} → {self.estabelecimento_destino} ({self.status})"
+
+
 
 class ItemRequisicao(models.Model):
     requisicao = models.ForeignKey(Requisicao, related_name="itens", on_delete=models.CASCADE)
@@ -438,6 +439,7 @@ class ItemRequisicao(models.Model):
         """Realiza a transferência do estoque entre estabelecimentos."""
         if self.requisicao.status != "Processando Transferência":
             raise ValidationError("A requisição precisa estar em processamento para a transferência.")
+        print(f"Tentando buscar DetalhesMedicamento para medicamento {self.medicamento} no estabelecimento {self.requisicao.estabelecimento_origem}")
 
         # Verificar e atualizar o estoque do estabelecimento de destino
         estoque_origem = DetalhesMedicamento.objects.get(

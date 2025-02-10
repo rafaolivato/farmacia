@@ -796,12 +796,9 @@ from .models import Estoque, Medicamento
 
 @login_required
 def medicamentos_por_estabelecimento(request, estabelecimento_id):
-    """Retorna os medicamentos disponíveis em um determinado estabelecimento."""
-    medicamentos = Estoque.objects.filter(estabelecimento_id=estabelecimento_id).values(
-        "medicamento__id", "medicamento__nome"
-    ).distinct()
-
+    medicamentos = Medicamento.objects.filter(estoque__estabelecimento_id=estabelecimento_id).values("id", "nome")
     return JsonResponse(list(medicamentos), safe=False)
+
 
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
@@ -809,13 +806,16 @@ from django.contrib import messages
 from django.db import transaction
 from .models import Requisicao
 
+
+
 @login_required
 def confirmar_requisicao(request, requisicao_id):
     """Confirma a transferência dos medicamentos e adiciona ao estoque do estabelecimento de origem."""
     requisicao = get_object_or_404(Requisicao, id=requisicao_id)
-
+    
+  
     # Verifica se o usuário tem permissão para aceitar essa requisição
-    if requisicao.estabelecimento_destino != request.user.profile.estabelecimento:
+    if requisicao.estabelecimento_origem != request.user.profile.estabelecimento:
         messages.error(request, "Você não tem permissão para confirmar esta requisição.")
         return redirect("receber_requisicoes")
 
@@ -829,14 +829,23 @@ def confirmar_requisicao(request, requisicao_id):
 
     return redirect("receber_requisicoes")  # Redireciona para a lista de requisições
 
+
+
+
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from .models import Requisicao
 
 @login_required
 def receber_requisicoes(request):
-    """Lista as requisições pendentes para confirmação pelo estabelecimento de destino."""
-    estabelecimento = request.user.profile.estabelecimento
-    requisicoes = Requisicao.objects.filter(estabelecimento_destino=estabelecimento, status="Processando Transferência")
+    """Lista as requisições que estão prontas para serem recebidas pelo estabelecimento do usuário logado."""
+    estabelecimento_usuario = request.user.profile.estabelecimento
 
-    return render(request, "estoque/receber_requisicoes.html", {"requisicoes": requisicoes})
+    requisicoes_pendentes = Requisicao.objects.filter(
+        estabelecimento_origem=estabelecimento_usuario,
+        status__in=["Aprovada", "Processando Transferência"]  # Agora filtra múltiplos status
+    )
+
+    return render(request, "estoque/receber_requisicoes.html", {"requisicoes": requisicoes_pendentes})
+
+

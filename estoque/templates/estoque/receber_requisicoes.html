@@ -1,38 +1,46 @@
 {% extends 'estoque/base.html' %}
+
 {% block content %}
-<h2>Requisições Pendentes para Recebimento</h2>
+<h2 class="mb-4">Requisições Pendentes para Recebimento</h2>
 
 {% if requisicoes %}
-<table border="1">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Origem</th>
-            <th>Destino</th>
-            <th>Status</th>
-            <th>Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for requisicao in requisicoes %}
-        <tr>
-            <td>{{ requisicao.id }}</td>
-            <td>{{ requisicao.estabelecimento_origem.nome }}</td>
-            <td>{{ requisicao.estabelecimento_destino.nome }}</td>
-            <td>{{ requisicao.status }}</td>
-            <td>
-                {% if requisicao.status == "Processando Transferência" %}
-                <a href="{% url 'confirmar_requisicao' requisicao.id %}" class="btn btn-success">Confirmar Recebimento</a>
-                {% else %}
-                <span>Já Processada</span>
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Origem</th>
+                <th>Destino</th>
+                <th>Status</th>
+                <th>Medicamentos</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for requisicao in requisicoes %}
+            <tr>
+                <td>{{ requisicao.id }}</td>
+                <td>{{ requisicao.estabelecimento_origem }}</td>
+                <td>{{ requisicao.estabelecimento_destino }}</td>
+                <td>{{ requisicao.status }}</td>
+                <td>
+                    <ul>
+                        {% for item in requisicao.itens.all %}
+                            <li>{{ item.medicamento.nome }} - {{ item.quantidade }} unidades</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td>
+                    <form action="{% url 'confirmar_requisicao' requisicao.id %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">Confirmar Recebimento</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 {% else %}
-<p>Não há requisições pendentes.</p>
+    <p>Não há requisições pendentes.</p>
 {% endif %}
 
 {% endblock %}

@@ -439,8 +439,6 @@ class RequisicaoForm(forms.ModelForm):
         # Filtrar apenas estabelecimentos do tipo "Almoxarifado Central"
         self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.filter(tipo_estabelecimento="Almoxarifado Central")
 
-
-
        
 
       
