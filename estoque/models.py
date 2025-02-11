@@ -414,17 +414,18 @@ class Requisicao(models.Model):
         self.save()
 
     def confirmar_transferencia(self):
-        """Confirma a transferência dos medicamentos, permitindo que o medicamento entre no estoque mesmo sem estar 'Processando Transferência'."""
-        
-        if self.status not in ["Aprovada"]:
-            raise ValidationError("A requisição precisa estar em um status apropriado para ser transferida.")
-        
+    
+    
+        if self.status != "Processando Transferência":
+            raise ValidationError("A requisição precisa estar em processamento para a transferência.")
+
         with transaction.atomic():
             for item in self.itens.all():
-                item.transferir_estoque()  # Este método vai adicionar o medicamento ao estoque do estabelecimento
-            
-            self.status = "Transferida"  # Atualize o status conforme necessário
-            self.save()
+                item.transferir_estoque()  # Este método move os medicamentos entre os estoques
+        
+        self.status = "Transferida"
+        self.save()
+
 
 
 
@@ -439,30 +440,62 @@ class ItemRequisicao(models.Model):
         """Realiza a transferência do estoque entre estabelecimentos."""
         if self.requisicao.status != "Processando Transferência":
             raise ValidationError("A requisição precisa estar em processamento para a transferência.")
-        print(f"Tentando buscar DetalhesMedicamento para medicamento {self.medicamento} no estabelecimento {self.requisicao.estabelecimento_origem}")
 
-        # Verificar e atualizar o estoque do estabelecimento de destino
-        estoque_origem = DetalhesMedicamento.objects.get(
-            estabelecimento=self.requisicao.estabelecimento_destino, medicamento=self.medicamento
-        )
+        print(f"Tentando buscar DetalhesMedicamento para medicamento {self.medicamento} no estabelecimento {self.requisicao.estabelecimento_destino}")
 
-        if estoque_origem.quantidade < self.quantidade:
+        # Buscar todos os lotes disponíveis no estabelecimento de destino
+        estoque_origem_list = DetalhesMedicamento.objects.filter(
+            estabelecimento=self.requisicao.estabelecimento_destino,
+            medicamento=self.medicamento
+        ).order_by('validade')  # Ordena pelos mais próximos do vencimento
+
+        quantidade_total_disponivel = sum(item.quantidade for item in estoque_origem_list)
+
+        if quantidade_total_disponivel < self.quantidade:
             raise ValidationError("Estoque insuficiente no destino para a transferência.")
 
-        # Subtrai do destino
-        estoque_origem.quantidade -= self.quantidade
-        estoque_origem.save()
+            # Distribuir a retirada entre os lotes disponíveis
+        quantidade_a_transferir = self.quantidade
 
-        # Adiciona ao estabelecimento de origem
-        estoque_destino, _ = DetalhesMedicamento.objects.get_or_create(
+        for estoque_origem in estoque_origem_list:
+            if quantidade_a_transferir == 0:
+                break
+
+            if estoque_origem.quantidade >= quantidade_a_transferir:
+                estoque_origem.quantidade -= quantidade_a_transferir
+                estoque_origem.save()
+                quantidade_a_transferir = 0
+            else:
+                quantidade_a_transferir -= estoque_origem.quantidade
+                estoque_origem.quantidade = 0
+                estoque_origem.save()
+
+        # Verificar se o medicamento já existe no estoque do estabelecimento de origem
+        estoque_destino, created = DetalhesMedicamento.objects.get_or_create(
             estabelecimento=self.requisicao.estabelecimento_origem,
             medicamento=self.medicamento,
-            defaults={"quantidade": 0},
+            defaults={
+                "quantidade": 0,
+                "validade": estoque_origem_list.first().validade if estoque_origem_list else None,
+                "lote": estoque_origem_list.first().lote if estoque_origem_list else None,
+                "fabricante": estoque_origem_list.first().fabricante if estoque_origem_list else None
+            }
         )
+
+        # Garantir que não há valores nulos em campos obrigatórios antes de salvar
+        if not estoque_destino.validade:
+            raise ValidationError("Não foi possível definir a validade para o novo estoque.")
+    
+        if not estoque_destino.lote:
+            raise ValidationError("Não foi possível definir o lote para o novo estoque.")
+
+        if not estoque_destino.fabricante:
+            raise ValidationError("Não foi possível definir o fabricante para o novo estoque.")
+
+        # Adiciona a quantidade transferida ao estoque de origem
         estoque_destino.quantidade += self.quantidade
         estoque_destino.save()
 
-    def __str__(self):
-        return f"{self.quantidade}x {self.medicamento.nome} (Requisição {self.requisicao.id})"
+
 
 

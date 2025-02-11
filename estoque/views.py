@@ -52,7 +52,6 @@ from django.contrib.auth import authenticate, login
 from django.forms import formset_factory
 
 
-
 def base(request):
     return render(request, "estoque/base.html")  
     
@@ -95,7 +94,6 @@ def lista_medicamentos(request):
             "total_valor_geral": total_valor_geral,  # Passando o total para o template
         },
     )
-
 
 
 def lista_pacientes(request):
@@ -805,6 +803,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
 from .models import Requisicao
+from django.core.exceptions import ValidationError
 
 
 
@@ -812,22 +811,27 @@ from .models import Requisicao
 def confirmar_requisicao(request, requisicao_id):
     """Confirma a transferência dos medicamentos e adiciona ao estoque do estabelecimento de origem."""
     requisicao = get_object_or_404(Requisicao, id=requisicao_id)
-    
-  
+
     # Verifica se o usuário tem permissão para aceitar essa requisição
     if requisicao.estabelecimento_origem != request.user.profile.estabelecimento:
         messages.error(request, "Você não tem permissão para confirmar esta requisição.")
         return redirect("receber_requisicoes")
 
-    # Confirma a transferência e adiciona ao estoque
+    # Certifica-se de que o status da requisição está correto antes da confirmação
+    if requisicao.status == "Aprovada":
+        requisicao.processar_transferencia()  # Atualiza o status para "Processando Transferência"
+
     try:
         with transaction.atomic():
             requisicao.confirmar_transferencia()
             messages.success(request, "Requisição confirmada com sucesso! Estoque atualizado.")
-    except Exception as e:
+    except ValidationError as e:
         messages.error(request, f"Erro ao confirmar requisição: {e}")
+    except Exception as e:
+        messages.error(request, f"Erro inesperado: {e}")
 
-    return redirect("receber_requisicoes")  # Redireciona para a lista de requisições
+    return redirect("receber_requisicoes")
+
 
 
 
