@@ -438,23 +438,43 @@ class ItemRequisicao(models.Model):
 
     def transferir_estoque(self):
         """Realiza a transferência do estoque entre estabelecimentos."""
+
         if self.requisicao.status != "Processando Transferência":
             raise ValidationError("A requisição precisa estar em processamento para a transferência.")
 
-        print(f"Tentando buscar DetalhesMedicamento para medicamento {self.medicamento} no estabelecimento {self.requisicao.estabelecimento_destino}")
+        print(f"\n🔍 Buscando estoque de ORIGEM para {self.medicamento} no estabelecimento {self.requisicao.estabelecimento_origem}")
 
-        # Buscar todos os lotes disponíveis no estabelecimento de destino
+    
+        # Buscar o ESTOQUE DO ALMOXARIFADO, garantindo que não é o próprio requisitante
         estoque_origem_list = DetalhesMedicamento.objects.filter(
-            estabelecimento=self.requisicao.estabelecimento_destino,
+            estabelecimento=self.requisicao.estabelecimento_origem,  # Origem correta
             medicamento=self.medicamento
-        ).order_by('validade')  # Ordena pelos mais próximos do vencimento
+        ).order_by('validade')
 
+        if not estoque_origem_list.exists():
+            print(f"🚨 Nenhum lote encontrado no {self.requisicao.estabelecimento_origem} para {self.medicamento}")
+            raise ValidationError("Erro: Nenhum lote encontrado no estoque de origem!")
+
+
+
+        # Verificando o que foi encontrado no banco de dados
+        if not estoque_origem_list.exists():
+            print("⚠️ Nenhum lote encontrado no estoque de origem!")
+            raise ValidationError("Não há estoque disponível na origem para a transferência.")
+
+        # Exibir os detalhes dos lotes encontrados
+        print(f"📦 Estoque de origem encontrado: {list(estoque_origem_list.values('lote', 'quantidade', 'validade'))}")
+
+        # Verifica o total disponível no estoque de origem
         quantidade_total_disponivel = sum(item.quantidade for item in estoque_origem_list)
 
-        if quantidade_total_disponivel < self.quantidade:
-            raise ValidationError("Estoque insuficiente no destino para a transferência.")
+        print(f"🔢 Quantidade disponível: {quantidade_total_disponivel} | Quantidade solicitada: {self.quantidade}")
 
-            # Distribuir a retirada entre os lotes disponíveis
+        if quantidade_total_disponivel < self.quantidade:
+            print("🚨 Erro: Estoque insuficiente na origem!")
+            raise ValidationError("Estoque insuficiente na origem para a transferência.")
+
+        # Distribuir a retirada entre os lotes disponíveis
         quantidade_a_transferir = self.quantidade
 
         for estoque_origem in estoque_origem_list:
@@ -470,9 +490,11 @@ class ItemRequisicao(models.Model):
                 estoque_origem.quantidade = 0
                 estoque_origem.save()
 
-        # Verificar se o medicamento já existe no estoque do estabelecimento de origem
+        print(f"✅ Transferência concluída! Estoque de origem atualizado.")
+
+        # Criar ou atualizar o estoque no DESTINO (para onde o medicamento vai)
         estoque_destino, created = DetalhesMedicamento.objects.get_or_create(
-            estabelecimento=self.requisicao.estabelecimento_origem,
+            estabelecimento=self.requisicao.estabelecimento_destino,
             medicamento=self.medicamento,
             defaults={
                 "quantidade": 0,
@@ -482,19 +504,14 @@ class ItemRequisicao(models.Model):
             }
         )
 
-        # Garantir que não há valores nulos em campos obrigatórios antes de salvar
-        if not estoque_destino.validade:
-            raise ValidationError("Não foi possível definir a validade para o novo estoque.")
-    
-        if not estoque_destino.lote:
-            raise ValidationError("Não foi possível definir o lote para o novo estoque.")
-
-        if not estoque_destino.fabricante:
-            raise ValidationError("Não foi possível definir o fabricante para o novo estoque.")
-
-        # Adiciona a quantidade transferida ao estoque de origem
+        # Adiciona a quantidade transferida ao ESTOQUE DE DESTINO
         estoque_destino.quantidade += self.quantidade
         estoque_destino.save()
+
+        print(f"✅ Transferência concluída! Novo estoque no destino: {estoque_destino.quantidade}")
+
+
+
 
 
 

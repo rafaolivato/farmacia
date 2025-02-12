@@ -1,0 +1,50 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+  <h1>Lista de Distribuições de Medicamentos</h1>
+
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Data de Distribuição</th>
+        <th>Estabelecimento de Origem</th>
+        <th>Medicamentos</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    
+    <tbody>
+      {% for distribuicao in distribuicoes %}
+        <tr>
+          <td>{{ distribuicao.id }}</td>
+          <td>{{ distribuicao.data_distribuicao }}</td>
+          <td>{{ distribuicao.estabelecimento_origem }}</td>
+          <td>
+            <ul>
+              {% for medicamento in distribuicao.distribuicaomedicamento_set.all %}
+                <li>{{ medicamento.medicamento.nome }} - {{ medicamento.quantidade }} unidades</li>
+              {% empty %}
+                <li>Nenhum medicamento distribuído</li>
+              {% endfor %}
+            </ul>
+          </td>
+          <td>
+            <a href="{% url 'editar_distribuicao' distribuicao.id %}" class="btn btn-primary">Editar</a>
+            <a href="{% url 'detalhes_distribuicao' distribuicao.id %}" class="btn btn-info">Detalhes</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="5" class="text-center">Nenhuma distribuição encontrada.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="d-flex justify-content-end">
+    <a href="{% url 'distribuicao_sem_requisicao' %}" class="btn btn-success">Nova Distribuição</a>
+  </div>
+
+{% endblock %}
+
