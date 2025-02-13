@@ -724,8 +724,6 @@ def criar_requisicao(request):
 
 
 
-
-
 # Listar requisições pendentes para o estabelecimento de destino
 @login_required
 def listar_requisicoes(request):
@@ -744,16 +742,22 @@ from .forms import LoteSelecionadoFormSet
 def responder_requisicao(request, requisicao_id):
     requisicao = get_object_or_404(Requisicao, id=requisicao_id, estabelecimento_destino=request.user.profile.estabelecimento)
     itens_requisicao = requisicao.itens.all()
+    lote = get_object_or_404(
+    DetalhesMedicamento,
+    id=lote_id,
+    estabelecimento=requisicao.estabelecimento_origem  # Garante que é do estoque correto
+)
 
     # Criando um dicionário com os lotes disponíveis para cada medicamento
     lotes_disponiveis = {
-        item.medicamento: DetalhesMedicamento.objects.filter(
-            medicamento=item.medicamento,
-            quantidade__gt=0,
-            estabelecimento=request.user.profile.estabelecimento
-        ).order_by('validade')
-        for item in itens_requisicao
-    }
+    item.medicamento: DetalhesMedicamento.objects.filter(
+        medicamento=item.medicamento,
+        quantidade__gt=0,
+        estabelecimento=requisicao.estabelecimento_origem  # Agora pegamos do local correto!
+    ).order_by('validade')
+    for item in itens_requisicao
+}
+
 
     if request.method == "POST":
         for item in itens_requisicao:
@@ -831,10 +835,6 @@ def confirmar_requisicao(request, requisicao_id):
         messages.error(request, f"Erro inesperado: {e}")
 
     return redirect("receber_requisicoes")
-
-
-
-
 
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required

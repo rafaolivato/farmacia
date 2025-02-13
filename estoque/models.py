@@ -426,10 +426,6 @@ class Requisicao(models.Model):
         self.status = "Transferida"
         self.save()
 
-
-
-
-
 class ItemRequisicao(models.Model):
     requisicao = models.ForeignKey(Requisicao, related_name="itens", on_delete=models.CASCADE)
     medicamento = models.ForeignKey("Medicamento", on_delete=models.CASCADE)
@@ -442,25 +438,22 @@ class ItemRequisicao(models.Model):
         if self.requisicao.status != "Processando Transferência":
             raise ValidationError("A requisição precisa estar em processamento para a transferência.")
 
-        print(f"\n🔍 Buscando estoque de ORIGEM para {self.medicamento} no estabelecimento {self.requisicao.estabelecimento_origem}")
+        print(f"📌 REQUISIÇÃO #{self.requisicao.id}")
+        print(f"📦 Medicamento: {self.medicamento}")
+        print(f"🏥 Estabelecimento SOLICITANTE: {self.requisicao.estabelecimento_origem}")  # Posto Planalto
+        print(f"🏭 Estabelecimento FORNECEDOR: {self.requisicao.estabelecimento_destino}")  # Almoxarifado Central
+        print(f"🏥 Estabelecimento de origem: {self.requisicao.estabelecimento_origem}")
 
-    
-        # Buscar o ESTOQUE DO ALMOXARIFADO, garantindo que não é o próprio requisitante
+
+        # Agora busca corretamente no estabelecimento fornecedor
         estoque_origem_list = DetalhesMedicamento.objects.filter(
-            estabelecimento=self.requisicao.estabelecimento_origem,  # Origem correta
+            estabelecimento=self.requisicao.estabelecimento_origem,  # Agora está certo ✅
             medicamento=self.medicamento
         ).order_by('validade')
 
         if not estoque_origem_list.exists():
             print(f"🚨 Nenhum lote encontrado no {self.requisicao.estabelecimento_origem} para {self.medicamento}")
             raise ValidationError("Erro: Nenhum lote encontrado no estoque de origem!")
-
-
-
-        # Verificando o que foi encontrado no banco de dados
-        if not estoque_origem_list.exists():
-            print("⚠️ Nenhum lote encontrado no estoque de origem!")
-            raise ValidationError("Não há estoque disponível na origem para a transferência.")
 
         # Exibir os detalhes dos lotes encontrados
         print(f"📦 Estoque de origem encontrado: {list(estoque_origem_list.values('lote', 'quantidade', 'validade'))}")
@@ -509,6 +502,11 @@ class ItemRequisicao(models.Model):
         estoque_destino.save()
 
         print(f"✅ Transferência concluída! Novo estoque no destino: {estoque_destino.quantidade}")
+
+
+
+
+
 
 
 
