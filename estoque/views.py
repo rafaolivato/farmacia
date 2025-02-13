@@ -448,6 +448,7 @@ def lotes_por_medicamento(request, medicamento_id):
         quantidade__gt=0  # Apenas lotes com quantidade disponível
     )
 
+
     # Verificar se há lotes disponíveis
     if not lotes.exists():
         return JsonResponse({"message": "Nenhum lote disponível para este medicamento."}, status=404)
@@ -738,26 +739,25 @@ from django.contrib.auth.decorators import login_required
 from .models import Requisicao, ItemRequisicao, DetalhesMedicamento
 from .forms import LoteSelecionadoFormSet
 
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, render, redirect
+from django.contrib import messages
+from .models import Requisicao, DetalhesMedicamento
+
 @login_required
 def responder_requisicao(request, requisicao_id):
     requisicao = get_object_or_404(Requisicao, id=requisicao_id, estabelecimento_destino=request.user.profile.estabelecimento)
     itens_requisicao = requisicao.itens.all()
-    lote = get_object_or_404(
-    DetalhesMedicamento,
-    id=lote_id,
-    estabelecimento=requisicao.estabelecimento_origem  # Garante que é do estoque correto
-)
-
-    # Criando um dicionário com os lotes disponíveis para cada medicamento
+    
+    # Obtém os lotes disponíveis organizados por validade
     lotes_disponiveis = {
-    item.medicamento: DetalhesMedicamento.objects.filter(
-        medicamento=item.medicamento,
-        quantidade__gt=0,
-        estabelecimento=requisicao.estabelecimento_origem  # Agora pegamos do local correto!
-    ).order_by('validade')
-    for item in itens_requisicao
-}
-
+        item.medicamento.id: DetalhesMedicamento.objects.filter(
+            medicamento=item.medicamento,
+            quantidade__gt=0,
+            estabelecimento=requisicao.estabelecimento_origem
+        ).order_by('validade')
+        for item in itens_requisicao
+    }
 
     if request.method == "POST":
         for item in itens_requisicao:
@@ -765,7 +765,8 @@ def responder_requisicao(request, requisicao_id):
             quantidade_enviada = int(request.POST.get(f'form-{item.id}-quantidade_selecionada', 0))
 
             if lote_id and quantidade_enviada > 0:
-                lote = get_object_or_404(DetalhesMedicamento, id=lote_id)
+                # Busca o lote selecionado garantindo que pertence ao estabelecimento de origem
+                lote = get_object_or_404(DetalhesMedicamento, id=lote_id, estabelecimento=requisicao.estabelecimento_origem)
 
                 if quantidade_enviada > lote.quantidade:
                     messages.error(request, f"Estoque insuficiente para {item.medicamento.nome} (Lote {lote.codigo})!")
@@ -793,12 +794,15 @@ def responder_requisicao(request, requisicao_id):
         'lotes_disponiveis': lotes_disponiveis
     })
 
+
 from django.http import JsonResponse
 from .models import Estoque, Medicamento
 
 @login_required
 def medicamentos_por_estabelecimento(request, estabelecimento_id):
-    medicamentos = Medicamento.objects.filter(estoque__estabelecimento_id=estabelecimento_id).values("id", "nome")
+    medicamentos = Medicamento.objects.filter(
+    estoques_medicamento__estabelecimento_id=estabelecimento_id
+).distinct().values("id", "nome")
     return JsonResponse(list(medicamentos), safe=False)
 
 

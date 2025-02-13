@@ -445,9 +445,8 @@ class ItemRequisicao(models.Model):
         print(f"🏥 Estabelecimento de origem: {self.requisicao.estabelecimento_origem}")
 
 
-        # Agora busca corretamente no estabelecimento fornecedor
         estoque_origem_list = DetalhesMedicamento.objects.filter(
-            estabelecimento=self.requisicao.estabelecimento_origem,  # Agora está certo ✅
+            estabelecimento=self.requisicao.estabelecimento_destino,  # Mudando para o fornecedor
             medicamento=self.medicamento
         ).order_by('validade')
 
@@ -486,16 +485,21 @@ class ItemRequisicao(models.Model):
         print(f"✅ Transferência concluída! Estoque de origem atualizado.")
 
         # Criar ou atualizar o estoque no DESTINO (para onde o medicamento vai)
-        estoque_destino, created = DetalhesMedicamento.objects.get_or_create(
+        estoque_destino = DetalhesMedicamento.objects.filter(
             estabelecimento=self.requisicao.estabelecimento_destino,
-            medicamento=self.medicamento,
-            defaults={
-                "quantidade": 0,
-                "validade": estoque_origem_list.first().validade if estoque_origem_list else None,
-                "lote": estoque_origem_list.first().lote if estoque_origem_list else None,
-                "fabricante": estoque_origem_list.first().fabricante if estoque_origem_list else None
-            }
-        )
+            medicamento=self.medicamento
+        ).first()
+
+        if not estoque_destino:
+            estoque_destino = DetalhesMedicamento.objects.create(
+             estabelecimento=self.requisicao.estabelecimento_destino,
+                medicamento=self.medicamento,
+                quantidade=0,
+                validade=estoque_origem_list.first().validade if estoque_origem_list else None,
+                lote=estoque_origem_list.first().lote if estoque_origem_list else None,
+                fabricante=estoque_origem_list.first().fabricante if estoque_origem_list else None
+    )
+
 
         # Adiciona a quantidade transferida ao ESTOQUE DE DESTINO
         estoque_destino.quantidade += self.quantidade
