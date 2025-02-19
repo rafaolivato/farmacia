@@ -421,13 +421,13 @@ def detalhes_dispensacao(request, id):
     }
     return render(request, "estoque/detalhes_dispensacao.html", context)
 
-from django.http import JsonResponse, Http404
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from .models import DetalhesMedicamento, Medicamento
 
 def lotes_por_medicamento(request, medicamento_id):
     """
-    Retorna os lotes disponíveis para o medicamento selecionado, 
+    Retorna os lotes disponíveis para o medicamento selecionado,
     filtrados pelo estabelecimento do usuário logado.
     """
     user = request.user
@@ -448,6 +448,10 @@ def lotes_por_medicamento(request, medicamento_id):
         quantidade__gt=0  # Apenas lotes com quantidade disponível
     )
 
+    # Debugging: Imprimir lotes filtrados no terminal
+    print(f"Usuário: {user.username} | Estabelecimento: {estabelecimento}")
+    print(f"Medicamento: {medicamento.nome} (ID: {medicamento.id})")
+    print(f"Lotes encontrados: {list(lotes.values('id', 'lote', 'quantidade', 'estabelecimento_id'))}")
 
     # Verificar se há lotes disponíveis
     if not lotes.exists():
@@ -732,67 +736,65 @@ def listar_requisicoes(request):
     requisicoes = Requisicao.objects.filter(estabelecimento_destino=estabelecimento, status='Pendente')
     return render(request, 'estoque/listar_requisicoes.html', {'requisicoes': requisicoes})
 
-# Responder a uma requisição (selecionando lote e confirmando envio)
-
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from .models import Requisicao, ItemRequisicao, DetalhesMedicamento
-from .forms import LoteSelecionadoFormSet
-
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
 from .models import Requisicao, DetalhesMedicamento
 
+from django.shortcuts import render
+
+
 @login_required
 def responder_requisicao(request, requisicao_id):
-    requisicao = get_object_or_404(Requisicao, id=requisicao_id, estabelecimento_destino=request.user.profile.estabelecimento)
+    requisicao = get_object_or_404(Requisicao, id=requisicao_id)
     itens_requisicao = requisicao.itens.all()
-    
-    # Obtém os lotes disponíveis organizados por validade
-    lotes_disponiveis = {
-        item.medicamento.id: DetalhesMedicamento.objects.filter(
+
+    # Criando um dicionário para armazenar os lotes disponíveis para cada medicamento
+    lotes_disponiveis = {}
+    for item in itens_requisicao:
+        lotes = DetalhesMedicamento.objects.filter(
             medicamento=item.medicamento,
-            quantidade__gt=0,
-            estabelecimento=requisicao.estabelecimento_origem
-        ).order_by('validade')
-        for item in itens_requisicao
-    }
+            quantidade__gt=0  # Apenas lotes com quantidade disponível
+        ).order_by("validade")  # Ordenando por validade mais curta
+        lotes_disponiveis[item.medicamento.id] = lotes
+
+    return render(request, "estoque/responder_requisicao.html", {
+        "requisicao": requisicao,
+        "itens_requisicao": itens_requisicao,
+        "lotes_disponiveis": lotes_disponiveis
+    })
 
     if request.method == "POST":
         for item in itens_requisicao:
             lote_id = request.POST.get(f'form-{item.id}-lote')
-            quantidade_enviada = int(request.POST.get(f'form-{item.id}-quantidade_selecionada', 0))
+            quantidade_enviada = int(request.POST.get(f'form-{item.id}-quantidade', 0))
 
-            if lote_id and quantidade_enviada > 0:
-                # Busca o lote selecionado garantindo que pertence ao estabelecimento de origem
-                lote = get_object_or_404(DetalhesMedicamento, id=lote_id, estabelecimento=requisicao.estabelecimento_origem)
+            print(f"Lote selecionado para {item.medicamento.nome}: {lote_id}")  # DEBUG
 
-                if quantidade_enviada > lote.quantidade:
-                    messages.error(request, f"Estoque insuficiente para {item.medicamento.nome} (Lote {lote.codigo})!")
-                    return redirect('responder_requisicao', requisicao_id=requisicao.id)
+            if not lote_id:
+                messages.error(request, f"O item {item.medicamento.nome} não possui um lote selecionado!")
+                return redirect('responder_requisicao', requisicao_id=requisicao.id)
 
-                # Atualiza o estoque
-                lote.quantidade -= quantidade_enviada
-                lote.save()
+            lote = get_object_or_404(DetalhesMedicamento, id=lote_id, estabelecimento=requisicao.estabelecimento_origem)
 
-                # Atualiza o item da requisição
-                item.lote_selecionado = lote
-                item.quantidade_enviada = quantidade_enviada
-                item.save()
+            if quantidade_enviada > lote.quantidade:
+                messages.error(request, f"Estoque insuficiente para {item.medicamento.nome} (Lote {lote.codigo})!")
+                return redirect('responder_requisicao', requisicao_id=requisicao.id)
 
-        # Muda status da requisição para 'Aprovada'
+            lote.quantidade -= quantidade_enviada
+            lote.save()
+
+            item.lote = lote
+            item.quantidade_enviada = quantidade_enviada
+            item.save()
+
         requisicao.status = 'Aprovada'
         requisicao.save()
 
         messages.success(request, "Medicamentos enviados com sucesso!")
         return redirect('listar_requisicoes')
 
-    return render(request, 'estoque/responder_requisicao.html', {
-        'requisicao': requisicao,
-        'itens_requisicao': itens_requisicao,
-        'lotes_disponiveis': lotes_disponiveis
-    })
+    
 
 
 from django.http import JsonResponse
@@ -812,33 +814,38 @@ from django.contrib import messages
 from django.db import transaction
 from .models import Requisicao
 from django.core.exceptions import ValidationError
-
+from django.db import transaction
 
 
 @login_required
 def confirmar_requisicao(request, requisicao_id):
-    """Confirma a transferência dos medicamentos e adiciona ao estoque do estabelecimento de origem."""
     requisicao = get_object_or_404(Requisicao, id=requisicao_id)
+     
+        
+    """ Confirma a transferência dos medicamentos e os adiciona ao estoque do estabelecimento de destino. """
+    if requisicao.status != "Aprovada":
+        raise ValidationError("A requisição precisa estar aprovada antes de ser confirmada.")
 
-    # Verifica se o usuário tem permissão para aceitar essa requisição
-    if requisicao.estabelecimento_origem != request.user.profile.estabelecimento:
-        messages.error(request, "Você não tem permissão para confirmar esta requisição.")
-        return redirect("receber_requisicoes")
+    with transaction.atomic():
+        for item in requisicao.itens.all():
+            if not item.lote:
+                raise ValidationError(f"O item {item.medicamento.nome} não possui um lote selecionado!")
 
-    # Certifica-se de que o status da requisição está correto antes da confirmação
-    if requisicao.status == "Aprovada":
-        requisicao.processar_transferencia()  # Atualiza o status para "Processando Transferência"
+            # Criar ou atualizar o estoque no estabelecimento de destino
+            estoque_destino, created = DetalhesMedicamento.objects.get_or_create(
+                medicamento=item.medicamento,
+                lote=item.lote.codigo,
+                estabelecimento=requisicao.estabelecimento_destino,
+                defaults={'quantidade': 0, 'validade': item.lote.validade}
+            )
 
-    try:
-        with transaction.atomic():
-            requisicao.confirmar_transferencia()
-            messages.success(request, "Requisição confirmada com sucesso! Estoque atualizado.")
-    except ValidationError as e:
-        messages.error(request, f"Erro ao confirmar requisição: {e}")
-    except Exception as e:
-        messages.error(request, f"Erro inesperado: {e}")
+            # Atualizar a quantidade do estoque no destino
+            estoque_destino.quantidade += item.quantidade_enviada
+            estoque_destino.save()
 
-    return redirect("receber_requisicoes")
+        # Atualizar status da requisição
+        requisicao.status = "Concluída"
+        requisicao.save()
 
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required

@@ -27,10 +27,12 @@
                     <td>{{ item.medicamento.nome }}</td>
                     <td>{{ item.quantidade }}</td>
                     <td>
-                        <select name="form-{{ item.id }}-lote" class="form-control">
+                        <pre>{{ lotes_disponiveis|get_item:item.medicamento.id }}</pre>
+
+                        <select name="form-{{ item.id }}-lote" class="form-control lote" data-medicamento="{{ item.medicamento.id }}">
                             <option value="">Selecione um lote</option>
-                            {% if lotes_disponiveis|get_item:item.medicamento %}
-                                {% for lote in lotes_disponiveis|get_item:item.medicamento %}
+                            {% if lotes_disponiveis|get_item:item.medicamento.id %}
+                                {% for lote in lotes_disponiveis|get_item:item.medicamento.id %}
                                     <option value="{{ lote.id }}">
                                         Lote: {{ lote.codigo }} | Validade: {{ lote.validade|date:"d/m/Y" }} | Qtd: {{ lote.quantidade }}
                                     </option>
@@ -41,7 +43,7 @@
                         </select>
                     </td>
                     <td>
-                        <input type="number" name="form-{{ item.id }}-quantidade_selecionada" class="form-control" min="1">
+                        <input type="number" name="form-{{ item.id }}-quantidade" class="form-control" min="1">
                     </td>
                 </tr>
                 {% endfor %}
@@ -51,4 +53,7 @@
         <button type="submit" class="btn btn-success">Confirmar Envio</button>
     </form>
 </div>
+
+
+
 {% endblock %}

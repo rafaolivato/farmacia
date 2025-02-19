@@ -422,8 +422,6 @@ from django import forms
 from django.forms import inlineformset_factory
 from .models import Requisicao, ItemRequisicao
 
-from django import forms
-from .models import Requisicao, ItemRequisicao
 
 class RequisicaoForm(forms.ModelForm):
     class Meta:
