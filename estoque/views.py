@@ -744,6 +744,16 @@ from .models import Requisicao, DetalhesMedicamento
 from django.shortcuts import render
 
 
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from .models import Requisicao, DetalhesMedicamento
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from estoque.models import Requisicao, DetalhesMedicamento
+
 @login_required
 def responder_requisicao(request, requisicao_id):
     requisicao = get_object_or_404(Requisicao, id=requisicao_id)
@@ -758,12 +768,7 @@ def responder_requisicao(request, requisicao_id):
         ).order_by("validade")  # Ordenando por validade mais curta
         lotes_disponiveis[item.medicamento.id] = lotes
 
-    return render(request, "estoque/responder_requisicao.html", {
-        "requisicao": requisicao,
-        "itens_requisicao": itens_requisicao,
-        "lotes_disponiveis": lotes_disponiveis
-    })
-
+    # 🔴 MOVENDO A LÓGICA DE POST PARA CIMA
     if request.method == "POST":
         for item in itens_requisicao:
             lote_id = request.POST.get(f'form-{item.id}-lote')
@@ -775,12 +780,27 @@ def responder_requisicao(request, requisicao_id):
                 messages.error(request, f"O item {item.medicamento.nome} não possui um lote selecionado!")
                 return redirect('responder_requisicao', requisicao_id=requisicao.id)
 
-            lote = get_object_or_404(DetalhesMedicamento, id=lote_id, estabelecimento=requisicao.estabelecimento_origem)
+            # 🔎 Depuração: Verificar se o lote existe antes de aplicar o filtro de estabelecimento
+            try:
+                lote = DetalhesMedicamento.objects.get(id=lote_id)
+            except DetalhesMedicamento.DoesNotExist:
+                messages.error(request, f"Lote {lote_id} não encontrado para o medicamento {item.medicamento.nome}.")
+                return redirect('responder_requisicao', requisicao_id=requisicao.id)
 
+            # 🔍 Verificar se o lote pertence ao estabelecimento correto
+            if lote.estabelecimento != requisicao.estabelecimento_origem:
+                messages.error(
+                    request, 
+                    f"O lote {lote.lote} do medicamento {item.medicamento.nome} não pertence ao estabelecimento de origem."
+                )
+                return redirect('responder_requisicao', requisicao_id=requisicao.id)
+
+            # 📉 Verificar se há estoque suficiente
             if quantidade_enviada > lote.quantidade:
                 messages.error(request, f"Estoque insuficiente para {item.medicamento.nome} (Lote {lote.codigo})!")
                 return redirect('responder_requisicao', requisicao_id=requisicao.id)
 
+            # ✅ Atualizando os registros
             lote.quantidade -= quantidade_enviada
             lote.save()
 
@@ -788,11 +808,20 @@ def responder_requisicao(request, requisicao_id):
             item.quantidade_enviada = quantidade_enviada
             item.save()
 
+        # ✅ Atualiza o status da requisição
         requisicao.status = 'Aprovada'
         requisicao.save()
 
         messages.success(request, "Medicamentos enviados com sucesso!")
-        return redirect('listar_requisicoes')
+        return redirect('listar_requisicoes')  # Redirecionando após salvar
+
+    # Retorna o formulário se não for POST
+    return render(request, "estoque/responder_requisicao.html", {
+        "requisicao": requisicao,
+        "itens_requisicao": itens_requisicao,
+        "lotes_disponiveis": lotes_disponiveis
+    })
+
 
     
 
