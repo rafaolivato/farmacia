@@ -27,7 +27,7 @@
                     <td>{{ item.medicamento.nome }}</td>
                     <td>{{ item.quantidade }}</td>
                     <td>
-                        <pre>{{ lotes_disponiveis|get_item:item.medicamento.id }}</pre>
+                        
 
                         <select name="form-{{ item.id }}-lote" class="form-control lote" data-medicamento="{{ item.medicamento.id }}">
                             <option value="">Selecione um lote</option>
