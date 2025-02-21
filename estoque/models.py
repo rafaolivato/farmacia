@@ -161,15 +161,23 @@ class DetalhesMedicamento(models.Model):
     fabricante = models.ForeignKey(Fabricante, on_delete=models.SET_NULL, null=True, blank=True)
     estabelecimento = models.ForeignKey('Estabelecimento', on_delete=models.CASCADE)
     def save(self, *args, **kwargs):
-        # Verificar se já existe um registro com o mesmo medicamento e lote
+        existing_record = None  # Garante que a variável sempre tem um valor
+    
         if not self.pk:  # Se for um novo registro
-            existing_record = DetalhesMedicamento.objects.filter(medicamento=self.medicamento, lote=self.lote).first()
+            existing_record = DetalhesMedicamento.objects.filter(
+                medicamento=self.medicamento, 
+                lote=self.lote,
+                estabelecimento=self.estabelecimento  # Filtrando pelo mesmo estabelecimento
+            ).first()
+        
             if existing_record:
-                # Atualizar o registro existente
+                # Atualizar a quantidade do registro existente
                 existing_record.quantidade += self.quantidade
                 existing_record.save()
                 return
+    
         super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f'{self.lote} - {self.medicamento.nome} - {self.quantidade}'

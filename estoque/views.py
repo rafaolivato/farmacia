@@ -55,48 +55,63 @@ from django.forms import formset_factory
 def base(request):
     return render(request, "estoque/base.html")  
     
-   
-from django.db.models import Sum, F
+
+from django.db.models import Sum, F, Q
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import DetalhesMedicamento, Estoque
 
 @login_required
 def lista_medicamentos(request):
-    # Data atual
     now = timezone.now()
-    # Data 3 meses à frente
     now_plus_3_months = (now + timedelta(days=90)).date()
 
-    # Obter o estabelecimento do usuário logado
     estabelecimento = request.user.profile.estabelecimento
 
-    # Filtrar os medicamentos do estabelecimento
-    detalhes_medicamentos = (
-        DetalhesMedicamento.objects.filter(estoque__estabelecimento=estabelecimento)
-        .values("medicamento__id", "medicamento__nome", "localizacao", "validade", "lote")
-        .annotate(
-            total_quantidade=Sum("quantidade"),  # Soma da quantidade nos detalhes
-            total_valor=Sum(F("quantidade") * F("valor"))  # Soma do valor total
-        )
-        .order_by("medicamento__nome", "lote")
+    estoques = Estoque.objects.filter(estabelecimento=estabelecimento).values(
+        "medicamento__id", "medicamento__nome"
+    ).annotate(
+        quantidade_em_estoque=Sum("quantidade")
     )
 
-    # Agora vamos calcular as quantidades de estoque
-    # Vamos somar as quantidades de `Estoque` e `DetalhesMedicamento` para cada medicamento
+    detalhes_medicamentos = list(DetalhesMedicamento.objects.filter(
+        Q(estoque__estabelecimento=estabelecimento) | Q(estoque__estabelecimento__isnull=True)
+    ).values(
+        "medicamento__id", "medicamento__nome", "localizacao", "validade", "lote"
+    ).annotate(
+        total_quantidade=Sum("quantidade"),
+        total_valor=Sum(F("quantidade") * F("valor"))
+    ).order_by("medicamento__nome", "lote"))
+
+    estoque_dict = {item["medicamento__id"]: item["quantidade_em_estoque"] for item in estoques}
+
     for item in detalhes_medicamentos:
-        estoque_item = Estoque.objects.filter(
-            estabelecimento=estabelecimento,
-            medicamento_id=item["medicamento__id"]
-        ).first()
+        item["quantidade_em_estoque"] = estoque_dict.get(item["medicamento__id"], 0)
 
-        if estoque_item:
-            item["quantidade_em_estoque"] = estoque_item.quantidade  # Quantidade no estoque
-        else:
-            item["quantidade_em_estoque"] = 0  # Caso não haja estoque
+    medicamentos_no_detalhes = {item["medicamento__id"] for item in detalhes_medicamentos}
 
-    # Calcular o total geral do valor
-    total_valor_geral = detalhes_medicamentos.aggregate(total_valor_geral=Sum("total_valor"))["total_valor_geral"] or 0
+    for item in estoques:
+        if item["medicamento__id"] not in medicamentos_no_detalhes:
+            # Buscar lote e validade mais recente no DetalhesMedicamento
+            detalhe = DetalhesMedicamento.objects.filter(
+                medicamento_id=item["medicamento__id"],
+                estoque__estabelecimento=estabelecimento
+            ).order_by("-validade").first()  # Ordena do mais recente para o mais antigo
+
+            detalhes_medicamentos.append({
+                "medicamento__id": item["medicamento__id"],
+                "medicamento__nome": item["medicamento__nome"],
+                "localizacao": detalhe.localizacao if detalhe else "N/A",
+                "validade": detalhe.validade if detalhe else "N/A",
+                "lote": detalhe.lote if detalhe else "N/A",
+                "total_quantidade": 0,
+                "total_valor": 0,
+                "quantidade_em_estoque": item["quantidade_em_estoque"]
+            })
+
+    total_valor_geral = sum(item["total_valor"] or 0 for item in detalhes_medicamentos)
 
     return render(
         request,
@@ -104,7 +119,7 @@ def lista_medicamentos(request):
         {
             "detalhes_medicamentos": detalhes_medicamentos,
             "now_plus_3_months": now_plus_3_months,
-            "total_valor_geral": total_valor_geral,  # Passando o total para o template
+            "total_valor_geral": total_valor_geral,
         },
     )
 
@@ -758,10 +773,6 @@ from .models import Requisicao, DetalhesMedicamento
 from django.shortcuts import render
 
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from .models import Requisicao, DetalhesMedicamento
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required

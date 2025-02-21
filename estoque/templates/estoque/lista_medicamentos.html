@@ -1,49 +1,39 @@
 {% extends 'estoque/base.html' %}
 
-{% block title %}Lista de Medicamentos{% endblock %}
-
 {% block content %}
-<h1>Lista de Medicamentos</h1>
-<table class="table">
+<h2>Lista de Medicamentos</h2>
+
+<table border="1">
     <thead>
         <tr>
-            <th scope="col">ID</th>
-            <th scope="col">Nome</th>
-            <th scope="col">Localização</th>
-            <th scope="col">Validade</th>
-            <th scope="col">Lote</th>
-            <th scope="col">Quantidade</th> <!-- Nova coluna de estoque -->
-            <th scope="col">Valor Total</th>
+            <th>Medicamento</th>
+            <th>Localização</th>
+            <th>Validade</th>
+            <th>Lote</th>
+            <th>Quantidade em Estoque</th>
+            <th>Quantidade Total</th>
+            <th>Valor Total</th>
         </tr>
     </thead>
     <tbody>
-        {% for detalhe_medicamento in detalhes_medicamentos %}
-            {% if detalhe_medicamento.total_quantidade > 0 %}
-                {% with detalhe_medicamento.validade as validade %}
-                    {% if validade %}
-                        {% if validade < now_plus_3_months %}
-                            <tr class="table-danger">
-                        {% else %}
-                            <tr>
-                        {% endif %}
-                            <td>{{ detalhe_medicamento.medicamento__id }}</td>
-                            <td>{{ detalhe_medicamento.medicamento__nome }}</td>
-                            <td>{{ detalhe_medicamento.localizacao }}</td>
-                            <td>{{ validade|date:"d/m/Y" }}</td>
-                            <td>{{ detalhe_medicamento.lote }}</td>
-                            <td>{{ detalhe_medicamento.quantidade_em_estoque }}</td> <!-- Exibindo quantidade no estoque -->
-                            <td>R$ {{ detalhe_medicamento.total_valor|floatformat:2|default:"0,00" }}</td>
-                        </tr>
-                    {% endif %}
-                {% endwith %}
-            {% endif %}
+        {% for medicamento in detalhes_medicamentos %}
+        <tr>
+            <td>{{ medicamento.medicamento__nome }}</td>
+            <td>{{ medicamento.localizacao }}</td>
+            <td>{{ medicamento.validade|date:"d/m/Y" }}</td>
+            <td>{{ medicamento.lote }}</td>
+            <td>{{ medicamento.quantidade_em_estoque }}</td>
+            <td>{{ medicamento.total_quantidade }}</td>
+            <td>R$ {{ medicamento.total_valor|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="7">Nenhum medicamento disponível.</td>
+        </tr>
         {% endfor %}
     </tbody>
-    <tr>
-        <td colspan="6" style="text-align: right;"><strong>Total Geral</strong></td> 
-        <td><strong>R$ {{ total_valor_geral|floatformat:2|default:"0,00" }}</strong></td>
-    </tr>
 </table>
 
-<a href="{% url 'entrada_estoque' %}" class="btn btn-secondary btn">Voltar</a>
+<h3>Total Geral: R$ {{ total_valor_geral|floatformat:2 }}</h3>
+
 {% endblock %}
