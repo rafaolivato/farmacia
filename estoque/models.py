@@ -39,7 +39,7 @@ class Departamento(models.Model):
         return self.nome
 
 class Localizacao(models.Model):
-    nome = models.CharField(max_length=100, verbose_name="Descrição da Localização")
+    nome = models.CharField(max_length=100, verbose_name="Descrição da Localização",default="Estante")
 
     def __str__(self):
         return self.nome

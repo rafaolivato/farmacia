@@ -9,7 +9,8 @@
         {% csrf_token %}
         {{ form.as_p }}
         {{ formset.management_form }}
-        <button type="button" class="btn btn-secondary" id="generate-notification-number">Gerar Número de Notificação</button>
+       <button type="button" class="btn btn-secondary" id="generate-notification-number">Gerar Número de Notificação</button>
+
         <br><br>
         <table class="table table-bordered text-center align-middle" id="medicamentos-table">
             <thead class="table-light">
@@ -69,6 +70,27 @@
 
 <!-- Aqui você insere o script com a lista de medicamentos -->
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    // Função para gerar número randômico de 6 dígitos
+    function gerarNumeroNotificacao() {
+        const numeroNotificacao = Math.floor(100000 + Math.random() * 900000); // Número de 6 dígitos
+        const campoNumeroNotificacao = document.getElementById('id_numero_notificacao');
+        if (campoNumeroNotificacao) {
+            campoNumeroNotificacao.value = numeroNotificacao;
+        } else {
+            console.error("Erro: O campo de número de notificação não foi encontrado.");
+        }
+    }
+
+    const gerarNumeroButton = document.getElementById('generate-notification-number');
+    if (gerarNumeroButton) {
+        gerarNumeroButton.addEventListener('click', gerarNumeroNotificacao);
+    } else {
+        console.error("Erro: Botão de gerar número de notificação não encontrado.");
+    }
+});
+
+
     document.addEventListener('DOMContentLoaded', function() {
         const formsetPrefix = "{{ formset.prefix }}";
         const totalFormsInput = document.querySelector(`#id_${formsetPrefix}-TOTAL_FORMS`);
