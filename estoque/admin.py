@@ -58,12 +58,41 @@ class ProfileAdmin(admin.ModelAdmin):
     list_filter = ('estabelecimento',)
 
 from django.contrib import admin
-from .models import Requisicao
+from .models import Requisicao, ItemRequisicao
+from django.utils.timezone import now
 
 @admin.register(Requisicao)
 class RequisicaoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'estabelecimento_origem', 'estabelecimento_destino', 'status', 'data_requisicao')
-    list_filter = ('estabelecimento_destino', 'status')
-    search_fields = ('id', 'estabelecimento_origem__nome', 'estabelecimento_destino__nome')
-    ordering = ('-data_requisicao',)
+    list_display = ('id', 'estabelecimento_origem', 'estabelecimento_destino', 'status', 'data_requisicao', 'usuario_aprovador')
+    list_filter = ('status', 'data_requisicao')
+    search_fields = ('estabelecimento_origem__nome', 'estabelecimento_destino__nome', 'usuario_aprovador__username')
+    actions = ['aprovar_requisicao']
+
+    def aprovar_requisicao(self, request, queryset):
+        """Ação para aprovar requisições em massa no Django Admin."""
+        for requisicao in queryset:
+            if requisicao.status != "Pendente":
+                self.message_user(request, f"A requisição {requisicao.id} já foi processada.", level='error')
+                continue
+
+            requisicao.usuario_aprovador = request.user  # Define o usuário logado como aprovador
+            requisicao.status = "Aprovada"
+            requisicao.data_aprovacao = now().date()
+            requisicao.save()
+
+            self.message_user(request, f"A requisição {requisicao.id} foi aprovada com sucesso.", level='success')
+
+    aprovar_requisicao.short_description = "Aprovar requisição selecionada"
+
+@admin.register(ItemRequisicao)
+class ItemRequisicaoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'requisicao', 'medicamento', 'quantidade', 'lote')
+    search_fields = ('medicamento__nome', 'lote__lote')  # 🔹 Adicionado para evitar erro
+
+class ItemRequisicaoInline(admin.TabularInline):
+    model = ItemRequisicao
+    extra = 1
+    autocomplete_fields = ['medicamento', 'lote']
+    search_fields = ['medicamento__nome', 'lote__lote']  # 🔹 Adicionado para evitar erro
+
 

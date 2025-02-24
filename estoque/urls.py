@@ -48,7 +48,7 @@ urlpatterns = [
     path('requisicoes/', listar_requisicoes, name='listar_requisicoes'),
     path('requisicoes/<int:requisicao_id>/responder/', responder_requisicao, name='responder_requisicao'),
     path('api/medicamentos_por_estabelecimento/<int:estabelecimento_id>/', medicamentos_por_estabelecimento, name='medicamentos_por_estabelecimento'),
-    path('requisicoes/confirmar/<int:requisicao_id>/', confirmar_requisicao, name='confirmar_requisicao'),
+    path('requisicoes/confirmar/<int:pk>/', confirmar_requisicao, name='confirmar_requisicao'),
     path('requisicoes/receber/', receber_requisicoes, name='receber_requisicoes'),
 
 ]

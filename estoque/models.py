@@ -386,22 +386,26 @@ class Requisicao(models.Model):
         "Estabelecimento", on_delete=models.CASCADE, related_name="requisicoes_destino"
     )
     observacoes = models.CharField(max_length=255, blank=True, null=True, verbose_name="Observações")
-    data_requisicao = models.DateField(auto_now_add=True)
+    data_requisicao = models.DateTimeField(auto_now_add=True)  # Correção: Melhor usar DateTimeField para mais precisão
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="Pendente")
-    data_aprovacao = models.DateField(null=True, blank=True)
+    data_aprovacao = models.DateTimeField(null=True, blank=True)  # Mudando para DateTimeField para registrar hora também
     usuario_aprovador = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name="requisicoes_aprovadas"
     )
 
     def aprovar(self, usuario):
-        """Aprova a requisição para que o estabelecimento de destino possa selecionar os lotes."""
+        """Aprova a requisição e define o usuário logado como aprovador."""
         if self.status != "Pendente":
-            raise ValidationError("A requisição já foi processada.")
+            raise ValidationError("A requisição já foi processada e não pode ser aprovada novamente.")
 
         self.status = "Aprovada"
+        self.usuario_aprovador = usuario  # Define o usuário logado como aprovador
         self.data_aprovacao = timezone.now()
-        self.usuario_aprovador = usuario
         self.save()
+
+    def __str__(self):
+        return f"Requisição #{self.id} - {self.estabelecimento_origem} → {self.estabelecimento_destino} ({self.status})"
+
 
     def rejeitar(self, usuario):
         """Rejeita a requisição e altera o status."""
@@ -446,13 +450,7 @@ class ItemRequisicao(models.Model):
         if self.requisicao.status != "Processando Transferência":
             raise ValidationError("A requisição precisa estar em processamento para a transferência.")
 
-        print(f"📌 REQUISIÇÃO #{self.requisicao.id}")
-        print(f"📦 Medicamento: {self.medicamento}")
-        print(f"🏥 Estabelecimento SOLICITANTE: {self.requisicao.estabelecimento_origem}")  # Posto Planalto
-        print(f"🏭 Estabelecimento FORNECEDOR: {self.requisicao.estabelecimento_destino}")  # Almoxarifado Central
-        print(f"🏥 Estabelecimento de origem: {self.requisicao.estabelecimento_origem}")
-
-
+      
         estoque_origem_list = DetalhesMedicamento.objects.filter(
             estabelecimento=self.requisicao.estabelecimento_destino,  # Mudando para o fornecedor
             medicamento=self.medicamento

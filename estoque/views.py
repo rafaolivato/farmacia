@@ -885,8 +885,9 @@ from django.db import transaction
 from .models import Requisicao, Estoque, DetalhesMedicamento
 
 @login_required
-def confirmar_requisicao(request, requisicao_id):
-    requisicao = get_object_or_404(Requisicao, id=requisicao_id)
+def confirmar_requisicao(request, pk):
+    requisicao = get_object_or_404(Requisicao, pk=pk)  # Apenas o 'pk' é necessário aqui
+    itens = ItemRequisicao.objects.filter(requisicao=requisicao)
 
     if requisicao.status != "Aprovada":
         messages.error(request, "A requisição precisa estar aprovada antes de ser confirmada.")
