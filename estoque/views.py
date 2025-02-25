@@ -404,39 +404,112 @@ def listar_dispensacoes(request):
         request, "estoque/listar_dispensacoes.html", {"dispensacoes": dispensacoes}
     )
 
+from django.utils.safestring import mark_safe
+import json
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.db import transaction
+from django.contrib.auth.decorators import login_required
+from .models import (
+    Dispensacao, DispensacaoMedicamento, DetalhesMedicamento, Medicamento, Estoque
+)
+from .forms import DispensacaoForm, DispensacaoMedicamentoFormSet
+
 @login_required
 def nova_dispensacao(request):
+    usuario = request.user  # Obtém o usuário logado
+
+    # Verifica se o usuário tem um perfil associado a um estabelecimento
+    try:
+        estabelecimento = usuario.profile.estabelecimento
+    except AttributeError:
+        messages.error(request, "Seu usuário não está associado a um estabelecimento.")
+        return redirect("listar_dispensacoes")
+
     if request.method == "POST":
         form = DispensacaoForm(request.POST)
         formset = DispensacaoMedicamentoFormSet(request.POST)
+        
         if form.is_valid() and formset.is_valid():
-            dispensacao = form.save()
-            medicamentos = formset.save(commit=False)
-            for medicamento in medicamentos:
-                medicamento.dispensacao = dispensacao
-                medicamento.save()
-            messages.success(request, "Dispensação registrada com sucesso!")
-            return redirect("listar_dispensacoes")
+            with transaction.atomic():  # Garante que todas as operações sejam concluídas corretamente
+                dispensacao = form.save(commit=False)
+                dispensacao.usuario = usuario  # Registra o usuário que fez a dispensação
+                dispensacao.save()
+                
+                medicamentos = formset.save(commit=False)
+
+                for medicamento in medicamentos:
+                    medicamento.dispensacao = dispensacao
+
+                    # Buscar o estoque geral do medicamento no estabelecimento do usuário
+                    try:
+                        estoque = Estoque.objects.get(
+                            medicamento=medicamento.medicamento, estabelecimento=estabelecimento
+                        )
+                    except Estoque.DoesNotExist:
+                        messages.error(request, f"Estoque não encontrado para {medicamento.medicamento} no {estabelecimento}!")
+                        return redirect("nova_dispensacao")
+
+                    # Verificar se há quantidade suficiente no estoque total
+                    if estoque.quantidade < medicamento.quantidade:
+                        messages.error(request, f"Estoque insuficiente para {medicamento.medicamento}!")
+                        return redirect("nova_dispensacao")
+
+                    # Atualizar o estoque total do estabelecimento
+                    estoque.quantidade -= medicamento.quantidade
+                    estoque.save()
+
+                    # Atualizar os lotes, priorizando os mais antigos
+                    detalhes_estoque = DetalhesMedicamento.objects.filter(
+                        medicamento=medicamento.medicamento,
+                        quantidade__gt=0,
+                        estabelecimento=estabelecimento  # Filtra pelo mesmo estabelecimento
+                    ).order_by("validade")  # Usa os lotes mais antigos primeiro
+
+                    quantidade_a_reduzir = medicamento.quantidade
+
+                    for lote in detalhes_estoque:
+                        if quantidade_a_reduzir <= 0:
+                            break  # Se toda a quantidade já foi retirada, sai do loop
+
+                        if lote.quantidade >= quantidade_a_reduzir:
+                            lote.quantidade -= quantidade_a_reduzir
+                            lote.save()
+                            quantidade_a_reduzir = 0
+                        else:
+                            quantidade_a_reduzir -= lote.quantidade
+                            lote.quantidade = 0
+                            lote.save()
+
+                    medicamento.save()  # Salva a dispensação após a atualização do estoque
+
+                messages.success(request, "Dispensação registrada e estoque atualizado com sucesso!")
+                return redirect("listar_dispensacoes")
+
     else:
         medicamentos_com_estoque = Medicamento.objects.filter(
-            detalhesmedicamento__quantidade__gt=0
+            estoques_medicamento__quantidade__gt=0,  # Busca medicamentos disponíveis no estoque geral
+            estoques_medicamento__estabelecimento=estabelecimento,  # Apenas do estabelecimento do usuário
         ).distinct()
 
     form = DispensacaoForm()
-    formset = DispensacaoMedicamentoFormSet(
-        queryset=DispensacaoMedicamento.objects.none()
+    formset = DispensacaoMedicamentoFormSet(queryset=DispensacaoMedicamento.objects.none())
+
+    # Convertendo medicamentos para JSON para uso no JavaScript
+    medicamentos_json = json.dumps(
+        [{"id": med.id, "nome": med.nome} for med in medicamentos_com_estoque]
     )
 
-    # Obter dispensações recentes
     dispensacoes_recentes = Dispensacao.objects.all().order_by("-data_dispensacao")[:3]
 
+    
     return render(
         request,
         "estoque/nova_dispensacao.html",
         {
             "form": form,
             "formset": formset,
-            "medicamentos_disponiveis": medicamentos_com_estoque,
+            "medicamentos_disponiveis": mark_safe(medicamentos_json),
             "dispensacoes_recentes": dispensacoes_recentes,
         },
     )

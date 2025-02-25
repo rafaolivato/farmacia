@@ -28,6 +28,7 @@
 </form>
 
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
     const formset = document.getElementById('detalhes-formset');
     const addButton = document.getElementById('adicionar-medicamento');
     
@@ -35,48 +36,51 @@
         const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
         const formCount = parseInt(totalForms.value);
         
+        // Clonando o primeiro form (a primeira linha)
         const newForm = formset.querySelector('.form-row').cloneNode(true);
         
+        // Atualizando os nomes e ids dos campos do novo formulário
         const fields = newForm.querySelectorAll('input, select, textarea');
         fields.forEach(field => {
             const name = field.name.replace(/-\d+-/, `-${formCount}-`);
             field.name = name;
             field.id = name;
             
+            // Resetando os valores dos campos
             if (field.tagName === "SELECT") {
-                field.selectedIndex = 0;
+                field.selectedIndex = 0; // Para selects, seleciona o primeiro item
             } else if (field.type !== "hidden") {
-                field.value = "";
+                field.value = ""; // Limpa os campos de input
             }
         });
 
+        // Adicionando o novo form ao formset
         formset.appendChild(newForm);
-        totalForms.value = formCount + 1;
+        totalForms.value = formCount + 1; // Atualizando o número de formulários
     });
 
-</script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.valor-campo, .valor-total').forEach(input => {
-            input.addEventListener('input', function () {
-                let value = this.value.replace(/\D/g, ""); // Remove tudo que não for número
-                if (value) {
-                    let floatValue = (parseFloat(value) / 100).toFixed(2); // Converte para decimal correto
-                    this.value = formatCurrency(floatValue); // Aplica a formatação de moeda
-                }
-            });
-    
-            input.addEventListener('blur', function () {
-                // Remove o "R$" e converte para formato aceito pelo Django antes de enviar o formulário
-                this.value = this.value.replace(/[R$\s.]/g, "").replace(",", ".");
-            });
+    // Restante do seu código de formatação de moeda
+    document.querySelectorAll('.valor-campo, .valor-total').forEach(input => {
+        input.addEventListener('input', function () {
+            let value = this.value.replace(/\D/g, ""); // Remove tudo que não for número
+            if (value) {
+                let floatValue = (parseFloat(value) / 100).toFixed(2); // Converte para decimal correto
+                this.value = formatCurrency(floatValue); // Aplica a formatação de moeda
+            }
         });
-    
-        function formatCurrency(value) {
-            return "R$ " + value.replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); 
-        }
+
+        input.addEventListener('blur', function () {
+            // Remove o "R$" e converte para formato aceito pelo Django antes de enviar o formulário
+            this.value = this.value.replace(/[R$\s.]/g, "").replace(",", ".");
+        });
     });
-    </script>
+
+    function formatCurrency(value) {
+        return "R$ " + value.replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); 
+    }
+});
+   
+</script>
 
         
     
