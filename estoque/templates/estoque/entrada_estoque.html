@@ -6,19 +6,85 @@
 
 <form method="POST" enctype="multipart/form-data">
     {% csrf_token %}
-    
+
     <h3>Informações da Entrada</h3>
-    {{ entrada_form.as_p }}
-    
-    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="id_tipo">Tipo de Entrada</label>
+                {{ entrada_form.tipo|crispy }}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="id_data">Data Nota Fiscal</label>
+                {{ entrada_form.data|crispy }}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="id_fonte_financiamento">Fonte de Financiamento</label>
+                {{ entrada_form.fonte_financiamento|crispy }}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="id_fornecedor">Fornecedor</label>
+                {{ entrada_form.fornecedor|crispy }}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="id_numero_documento">Número do Documento</label>
+                {{ entrada_form.numero_documento|crispy }}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="id_valor_total">Valor Total</label>
+                {{ entrada_form.valor_total|crispy }}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="form-group">
+                <label for="id_observacao">Observação</label>
+                {{ entrada_form.observacao|crispy }}
+            </div>
+        </div>
+    </div>
+
     <h3>Detalhes dos Medicamentos</h3>
     <div id="detalhes-formset">
         {{ detalhes_formset.management_form }}
         {% for form in detalhes_formset %}
             <div class="form-row">
-                {{ form.as_p }}
-            
-
+                <div class="col-md-4">
+                    {{ form.medication|crispy }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.quantidade|crispy }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.lote|crispy }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.validade|crispy }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.localizacao|crispy }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.fabricante|crispy }}
+                </div>
             </div>
         {% endfor %}
     </div>
@@ -27,65 +93,47 @@
     <button type="submit" class="btn btn-primary mt-4">Salvar</button>
 </form>
 
+    <button type="button" id="adicionar-medicamento" class="btn btn-success mt-4">Adicionar Medicamento</button>
+    <button type="submit" class="btn btn-primary mt-4">Salvar</button>
+</form>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
     const formset = document.getElementById('detalhes-formset');
     const addButton = document.getElementById('adicionar-medicamento');
-    
-    addButton.addEventListener('click', function() {
+
+    addButton.addEventListener('click', function () {
         const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
         const formCount = parseInt(totalForms.value);
-        
-        // Clonando o primeiro form (a primeira linha)
-        const newForm = formset.querySelector('.form-row').cloneNode(true);
-        
-        // Atualizando os nomes e ids dos campos do novo formulário
+
+        // Pegando o último formulário como base
+        const lastForm = formset.querySelector('.form-row:last-of-type');
+        if (!lastForm) return; // Evita erro se não houver formulário inicial
+
+        const newForm = lastForm.cloneNode(true);
+
+        // Atualizando os índices dos campos clonados
         const fields = newForm.querySelectorAll('input, select, textarea');
         fields.forEach(field => {
-            const name = field.name.replace(/-\d+-/, `-${formCount}-`);
-            field.name = name;
-            field.id = name;
-            
-            // Resetando os valores dos campos
+            if (field.name) {
+                field.name = field.name.replace(/\d+/, formCount);
+                field.id = field.id.replace(/\d+/, formCount);
+            }
+
+            // Resetando os valores
             if (field.tagName === "SELECT") {
-                field.selectedIndex = 0; // Para selects, seleciona o primeiro item
+                field.selectedIndex = 0; // Limpa a seleção do select
             } else if (field.type !== "hidden") {
-                field.value = ""; // Limpa os campos de input
+                field.value = ""; // Limpa os inputs
             }
         });
 
-        // Adicionando o novo form ao formset
+        // Adicionando o novo formulário ao formset
         formset.appendChild(newForm);
-        totalForms.value = formCount + 1; // Atualizando o número de formulários
+        totalForms.value = formCount + 1; // Atualiza a contagem do formset
     });
-
-    // Restante do seu código de formatação de moeda
-    document.querySelectorAll('.valor-campo, .valor-total').forEach(input => {
-        input.addEventListener('input', function () {
-            let value = this.value.replace(/\D/g, ""); // Remove tudo que não for número
-            if (value) {
-                let floatValue = (parseFloat(value) / 100).toFixed(2); // Converte para decimal correto
-                this.value = formatCurrency(floatValue); // Aplica a formatação de moeda
-            }
-        });
-
-        input.addEventListener('blur', function () {
-            // Remove o "R$" e converte para formato aceito pelo Django antes de enviar o formulário
-            this.value = this.value.replace(/[R$\s.]/g, "").replace(",", ".");
-        });
-    });
-
-    function formatCurrency(value) {
-        return "R$ " + value.replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, "."); 
-    }
 });
-   
+
 </script>
 
-        
-    
-
-    
-
 {% endblock %}
-

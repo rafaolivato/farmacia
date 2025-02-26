@@ -204,8 +204,6 @@ def carregar_medicamentos_excel(request):
     return redirect("lista_medicamentos")
 
 
-
-
 @login_required
 def cadastrar_medicamento(request):
     medicamentos = Medicamento.objects.all()

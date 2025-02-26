@@ -108,19 +108,28 @@ class EntradaEstoqueForm(forms.ModelForm):
         initial=0.00
     )
 
+    data = forms.DateField(
+        input_formats=['%Y-%m-%d'],  # Django espera o formato ISO ao receber o dado do navegador
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+
+    data_recebimento = forms.DateField(
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+
     class Meta:
         model = EntradaEstoque
         fields = ['tipo', 'data', 'data_recebimento', 'fornecedor', 'tipo_documento', 'numero_documento', 'valor_total', 'observacao']
         widgets = {
             'tipo': forms.Select(attrs={'class': 'form-control'}),
-            'data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'data_recebimento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'fornecedor': forms.Select(attrs={'class': 'form-control'}),
             'tipo_documento': forms.Select(attrs={'class': 'form-control'}),
             'numero_documento': forms.TextInput(attrs={'class': 'form-control'}),
             'valor_total': forms.TextInput(attrs={'class': 'form-control valor-total'}),
             'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
 
     def clean_valor_total(self):
         valor = self.cleaned_data.get('valor_total')
@@ -154,6 +163,11 @@ class DetalhesMedicamentoForm(forms.ModelForm):
         initial=0.00
     )
 
+    validade = forms.DateField(
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+
     def clean_valor(self):
         valor = self.cleaned_data.get('valor')
         if isinstance(valor, str):
@@ -162,6 +176,8 @@ class DetalhesMedicamentoForm(forms.ModelForm):
             return float(valor)
         except ValueError:
             raise forms.ValidationError("Digite um número válido.")
+
+    
 
     class Meta:
         model = DetalhesMedicamento
@@ -183,7 +199,7 @@ DetalhesMedicamentoFormSet = modelformset_factory(
     'fabricante': forms.Select(attrs={'class': 'form-control select2', 'style': 'max-width: 250px;'})
 },
     extra=1,  # Garante que pelo menos um formulário vazio apareça
-    can_delete=True  # Habilita exclusão de itens no FormSet
+   
 )
 
 class EstabelecimentoForm(forms.ModelForm):
