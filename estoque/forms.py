@@ -151,8 +151,8 @@ class EntradaEstoqueForm(forms.ModelForm):
 
 
 from django import forms
-from .models import DetalhesMedicamento, Estoque, Medicamento, Fabricante, Localizacao
-from django.forms import modelformset_factory
+from .models import DetalhesMedicamento, Estoque, Medicamento, Fabricante, Localizacao, EntradaEstoque
+from django.forms import inlineformset_factory
 
 class DetalhesMedicamentoForm(forms.ModelForm):
     valor = forms.DecimalField(
@@ -185,22 +185,18 @@ class DetalhesMedicamentoForm(forms.ModelForm):
 
  
 
-# FormSet para DetalhesMedicamento
-DetalhesMedicamentoFormSet = modelformset_factory(
-    DetalhesMedicamento,
-    fields=('medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante'),
-   widgets={
-    'medicamento': forms.Select(attrs={'class': 'form-control select2', 'style': 'max-width: 300px;'}),
-    'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'style': 'max-width: 120px;'}),
-    'lote': forms.TextInput(attrs={'class': 'form-control', 'style': 'max-width: 200px;'}),
-    'valor': forms.TextInput(attrs={'class': 'form-control valor-campo', 'style': 'max-width: 150px;'}),
-    'localizacao': forms.Select(attrs={'class': 'form-control select2', 'style': 'max-width: 250px;'}),
-    'validade': forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'style': 'max-width: 200px;'}),
-    'fabricante': forms.Select(attrs={'class': 'form-control select2', 'style': 'max-width: 250px;'})
-},
-    extra=1,  # Garante que pelo menos um formulário vazio apareça
-   
+
+
+DetalhesMedicamentoFormSet = inlineformset_factory(
+    EntradaEstoque,  # O modelo principal ao qual o formset está relacionado
+    DetalhesMedicamento,  # O modelo secundário do formset
+    form=DetalhesMedicamentoForm,  # O formulário base do formset
+    fields=('medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante'
+),
+    extra=1,  # Número mínimo de formulários vazios para preenchimento
+    
 )
+
 
 class EstabelecimentoForm(forms.ModelForm):
     class Meta:

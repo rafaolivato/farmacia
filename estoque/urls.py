@@ -6,7 +6,7 @@ from .views import saida_estoque,sucesso
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
 from .views import criar_requisicao, listar_requisicoes, responder_requisicao
-from .views import medicamentos_por_estabelecimento, confirmar_requisicao, receber_requisicoes
+from .views import medicamentos_por_estabelecimento, confirmar_requisicao, receber_requisicoes, entrada_estoque
 
 
 urlpatterns = [
@@ -20,7 +20,7 @@ urlpatterns = [
     path('cadastro_fabricante/', views.cadastro_fabricante, name='cadastro_fabricante'),
     path('cadastrar_medicamento/', views.cadastrar_medicamento, name ='cadastrar_medicamento'),
     path('sucesso/', views.sucesso, name='sucesso'), 
-    path('entrada_estoque/', views.entrada_estoque_view, name='entrada_estoque'),
+    path('entrada_estoque/', views.entrada_estoque, name='entrada_estoque'),
     path('cadastrar_localizacao/', views.cadastrar_localizacao, name ='cadastrar_localizacao'),
     path('lista_localizacoes/', views.lista_localizacoes, name='lista_localizacoes'),
     path('cadastrar_estabelecimento/', views.cadastrar_estabelecimento, name='cadastrar_estabelecimento'),
@@ -50,6 +50,7 @@ urlpatterns = [
     path('api/medicamentos_por_estabelecimento/<int:estabelecimento_id>/', medicamentos_por_estabelecimento, name='medicamentos_por_estabelecimento'),
     path('requisicoes/confirmar/<int:pk>/', confirmar_requisicao, name='confirmar_requisicao'),
     path('requisicoes/receber/', receber_requisicoes, name='receber_requisicoes'),
+  
 
 ]
 

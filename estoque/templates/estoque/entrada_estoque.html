@@ -66,25 +66,26 @@
     <div id="detalhes-formset">
         {{ detalhes_formset.management_form }}
         {% for form in detalhes_formset %}
-            <div class="form-row">
+            <div class="form-row formset-row">
                 <div class="col-md-4">
-                    {{ form.medication|crispy }}
+                    {{ form.medicamento|crispy }}
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     {{ form.quantidade|crispy }}
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     {{ form.lote|crispy }}
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     {{ form.validade|crispy }}
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     {{ form.localizacao|crispy }}
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     {{ form.fabricante|crispy }}
                 </div>
+                <button type="button" class="btn btn-danger btn-sm remover-medicamento">Remover</button>
             </div>
         {% endfor %}
     </div>
@@ -93,47 +94,37 @@
     <button type="submit" class="btn btn-primary mt-4">Salvar</button>
 </form>
 
-    <button type="button" id="adicionar-medicamento" class="btn btn-success mt-4">Adicionar Medicamento</button>
-    <button type="submit" class="btn btn-primary mt-4">Salvar</button>
-</form>
-
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-    const formset = document.getElementById('detalhes-formset');
-    const addButton = document.getElementById('adicionar-medicamento');
-
-    addButton.addEventListener('click', function () {
+        const formsetContainer = document.getElementById('detalhes-formset');
+        const addButton = document.getElementById('adicionar-medicamento');
         const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
-        const formCount = parseInt(totalForms.value);
 
-        // Pegando o último formulário como base
-        const lastForm = formset.querySelector('.form-row:last-of-type');
-        if (!lastForm) return; // Evita erro se não houver formulário inicial
+        addButton.addEventListener('click', function () {
+            const formCount = parseInt(totalForms.value);
+            const emptyForm = document.querySelector('.formset-row:first-of-type');
 
-        const newForm = lastForm.cloneNode(true);
+            if (!emptyForm) return;
 
-        // Atualizando os índices dos campos clonados
-        const fields = newForm.querySelectorAll('input, select, textarea');
-        fields.forEach(field => {
-            if (field.name) {
+            const newForm = emptyForm.cloneNode(true);
+
+            newForm.querySelectorAll('input, select').forEach(field => {
                 field.name = field.name.replace(/\d+/, formCount);
                 field.id = field.id.replace(/\d+/, formCount);
-            }
+                field.value = ""; // Reseta os valores dos campos
+            });
 
-            // Resetando os valores
-            if (field.tagName === "SELECT") {
-                field.selectedIndex = 0; // Limpa a seleção do select
-            } else if (field.type !== "hidden") {
-                field.value = ""; // Limpa os inputs
-            }
+            formsetContainer.appendChild(newForm);
+            totalForms.value = formCount + 1;
         });
 
-        // Adicionando o novo formulário ao formset
-        formset.appendChild(newForm);
-        totalForms.value = formCount + 1; // Atualiza a contagem do formset
+        formsetContainer.addEventListener('click', function (event) {
+            if (event.target.classList.contains('remover-medicamento')) {
+                event.target.closest('.formset-row').remove();
+                totalForms.value = document.querySelectorAll('.formset-row').length;
+            }
+        });
     });
-});
-
 </script>
 
 {% endblock %}

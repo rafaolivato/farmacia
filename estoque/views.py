@@ -254,21 +254,21 @@ from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
 from .models import Estoque, EntradaEstoque, DetalhesMedicamento
 
 @login_required
-def entrada_estoque_view(request):
+def entrada_estoque(request):
     if request.method == 'POST':
-        entrada_form = EntradaEstoqueForm(request.POST, user=request.user)
-        detalhes_formset = DetalhesMedicamentoFormSet(request.POST)
+        form = EntradaEstoqueForm(request.POST, user=request.user)
+        formset = DetalhesMedicamentoFormSet(request.POST)
        
 
-        if entrada_form.is_valid() and detalhes_formset.is_valid():
+        if form.is_valid() and formset.is_valid():
             with transaction.atomic():
                 # Salva a entrada
-                entrada = entrada_form.save(commit=False)
+                entrada = form.save(commit=False)
                 entrada.user = request.user
                 entrada.save()
 
                 # Salva os detalhes dos medicamentos
-                for form in detalhes_formset:
+                for form in formset:
                     detalhe = form.save(commit=False)
                     detalhe.entrada = entrada
                     detalhe.estabelecimento = entrada.estabelecimento  # Associa o estabelecimento à entrada
@@ -293,12 +293,12 @@ def entrada_estoque_view(request):
                 return redirect('sucesso')
 
     else:
-        entrada_form = EntradaEstoqueForm(user=request.user)
-        detalhes_formset = DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none())
+        form = EntradaEstoqueForm(request.POST, user=request.user)
+        formset = DetalhesMedicamentoFormSet(request.POST, instance=EntradaEstoque())  
 
     return render(request, 'estoque/entrada_estoque.html', {
-        'entrada_form': entrada_form,
-        'detalhes_formset': detalhes_formset,
+        'entrada_form': form,
+        'detalhes_formset': formset,
     })
 
 

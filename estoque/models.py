@@ -150,7 +150,7 @@ class Estoque(models.Model):
 
 
 class DetalhesMedicamento(models.Model):
-    
+    entrada = models.ForeignKey(EntradaEstoque, on_delete=models.CASCADE, related_name="detalhes")
     estoque = models.ForeignKey(Estoque, on_delete=models.CASCADE)
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField(default=0)
