@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'estoque',
     'crispy_forms',
     'crispy_bootstrap5',
+    'widget_tweaks',
     
 ]
 

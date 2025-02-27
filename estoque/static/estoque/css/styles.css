@@ -131,7 +131,7 @@ footer {
   margin-bottom: 10px;
   border-radius: 5px;
   border: 1px solid #1676d7;
-  padding: 8px;
+  padding: 10px;
 }
 
 .form-group label {
@@ -143,7 +143,7 @@ footer {
 
 .form-group input[type="text"],
 .form-group select {
-  flex: 2;
+  flex: 1;
   margin-right: 10px;
   border: none;
   outline: none;
@@ -371,6 +371,28 @@ h6 {
   align-items: center;
 }
 
+
+/* Garante que o conteúdo do select2 não seja cortado */
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    white-space: nowrap; /* Evita que o texto quebre em várias linhas */
+    overflow: hidden;    /* Impede que o texto saia do campo */
+    text-overflow: ellipsis; /* Exibe "..." se o texto for muito longo */
+}
+
+/* Ajuste o comportamento de overflow para o campo select */
+.select2-container--default .select2-selection {
+    width: 100% !important; /* Garante que o campo ocupe 100% da largura disponível */
+    min-width: 150px; /* Ajuste o valor mínimo conforme necessário */
+    padding: 10px 15px; /* Adiciona mais espaço interno para acomodar o texto */
+}
+
+/* Ajusta o comportamento do placeholder */
+.select2-container--default .select2-selection--single .select2-selection__placeholder {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
 /* Estilo para alinhar rótulos e campos de entrada */
 .form-group {
   margin-bottom: 1.5rem;
@@ -441,3 +463,9 @@ h6 {
   padding: 10px;  /* Adiciona padding para garantir que o texto não fique cortado */
   font-size: 16px;  /* Ajusta o tamanho da fonte para melhorar a legibilidade */
 }
+
+
+.select2-container .select2-selection {
+    width: 100% !important;  /* Força o select2 a ocupar 100% da largura */
+}
+

@@ -1,130 +1,134 @@
 {% extends 'estoque/base.html' %}
 {% load crispy_forms_tags %}
+{% load widget_tweaks %}
+
+
 
 {% block content %}
 <h2>Entrada de Estoque de Medicamentos</h2>
 
-<form method="POST" enctype="multipart/form-data">
+<form method="POST">
     {% csrf_token %}
 
-    <h3>Informações da Entrada</h3>
     <div class="row">
         <div class="col-md-6">
             <div class="form-group">
-                <label for="id_tipo">Tipo de Entrada</label>
-                {{ entrada_form.tipo|crispy }}
+                <label for="{{ entrada_form.tipo.id_for_label }}">Tipo de Entrada</label>
+                {{ entrada_form.tipo|add_class:"form-control w-100" }}
             </div>
         </div>
+
         <div class="col-md-6">
             <div class="form-group">
-                <label for="id_data">Data Nota Fiscal</label>
-                {{ entrada_form.data|crispy }}
+            <label for="{{ entrada_form.data.id_for_label }}">Data Nota Fiscal</label>
+            {{ entrada_form.data }}  <!-- Certifique-se de que o campo de data está sendo renderizado corretamente -->
+        </div>
+        
+
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="{{ entrada_form.fornecedor.id_for_label }}">Fornecedor</label>
+                {{ entrada_form.fornecedor }}
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="{{ entrada_form.numero_documento.id_for_label }}">Número do Documento</label>
+                {{ entrada_form.numero_documento }}
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="{{ entrada_form.valor_total.id_for_label }}">Valor Total</label>
+                {{ entrada_form.valor_total }}
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="{{ entrada_form.observacao.id_for_label }}">Observação</label>
+                {{ entrada_form.observacao }}
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label for="id_fonte_financiamento">Fonte de Financiamento</label>
-                {{ entrada_form.fonte_financiamento|crispy }}
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label for="id_fornecedor">Fornecedor</label>
-                {{ entrada_form.fornecedor|crispy }}
-            </div>
-        </div>
-    </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label for="id_numero_documento">Número do Documento</label>
-                {{ entrada_form.numero_documento|crispy }}
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label for="id_valor_total">Valor Total</label>
-                {{ entrada_form.valor_total|crispy }}
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-12">
-            <div class="form-group">
-                <label for="id_observacao">Observação</label>
-                {{ entrada_form.observacao|crispy }}
-            </div>
-        </div>
-    </div>
-
-    <h3>Detalhes dos Medicamentos</h3>
+   <h3 class="mt-4">Detalhes dos Medicamentos</h3>
     <div id="detalhes-formset">
-        {{ detalhes_formset.management_form }}
+        {{ detalhes_formset.management_form }}  <!-- Isso deve estar antes do loop -->
+
         {% for form in detalhes_formset %}
-            <div class="form-row formset-row">
-                <div class="col-md-4">
-                    {{ form.medicamento|crispy }}
-                </div>
-                <div class="col-md-2">
-                    {{ form.quantidade|crispy }}
-                </div>
-                <div class="col-md-2">
-                    {{ form.lote|crispy }}
-                </div>
-                <div class="col-md-2">
-                    {{ form.validade|crispy }}
-                </div>
-                <div class="col-md-2">
-                    {{ form.localizacao|crispy }}
-                </div>
-                <div class="col-md-2">
-                    {{ form.fabricante|crispy }}
-                </div>
-                <button type="button" class="btn btn-danger btn-sm remover-medicamento">Remover</button>
-            </div>
-        {% endfor %}
+        <div class="form-row formset-row">
+        <div class="col-md-4 form-group">
+            <label>Medicamento</label>
+            {{ form.medicamento }}
+        </div>
+        <div class="col-md-2 form-group">
+            <label>Quantidade</label>
+            {{ form.quantidade }}
+        </div>
+        <div class="col-md-2 form-group">
+            <label>Lote</label>
+            {{ form.lote }}
+        </div>
+        <div class="col-md-2 form-group">
+            <label>Validade</label>
+            {{ form.validade }}
+        </div>
+        <div class="col-md-2 form-group">
+            <label>Localização</label>
+            {{ form.localizacao }}
+        </div>
+        <div class="col-md-2 form-group">
+            <label>Fabricante</label>
+            {{ form.fabricante }}
+        </div>
+        <button type="button" class="btn btn-danger btn-sm remover-medicamento">Remover</button>
     </div>
-    
+{% endfor %}
+
+    </div>
+
+   
+
     <button type="button" id="adicionar-medicamento" class="btn btn-success mt-4">Adicionar Medicamento</button>
     <button type="submit" class="btn btn-primary mt-4">Salvar</button>
 </form>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const formsetContainer = document.getElementById('detalhes-formset');
-        const addButton = document.getElementById('adicionar-medicamento');
-        const totalForms = document.querySelector('[name="form-TOTAL_FORMS"]');
+document.addEventListener('DOMContentLoaded', function () {
+    const formsetContainer = document.getElementById('detalhes-formset');
+    const addButton = document.getElementById('adicionar-medicamento');
+    const totalForms = document.querySelector('#id_form-TOTAL_FORMS'); // Certifique-se que pega o input correto
 
-        addButton.addEventListener('click', function () {
-            const formCount = parseInt(totalForms.value);
-            const emptyForm = document.querySelector('.formset-row:first-of-type');
+    addButton.addEventListener('click', function () {
+        const formCount = parseInt(totalForms.value);
+        const emptyForm = document.querySelector('.formset-row:first-of-type');
 
-            if (!emptyForm) return;
+        if (!emptyForm) return;
 
-            const newForm = emptyForm.cloneNode(true);
-
-            newForm.querySelectorAll('input, select').forEach(field => {
-                field.name = field.name.replace(/\d+/, formCount);
-                field.id = field.id.replace(/\d+/, formCount);
-                field.value = ""; // Reseta os valores dos campos
-            });
-
-            formsetContainer.appendChild(newForm);
-            totalForms.value = formCount + 1;
+        const newForm = emptyForm.cloneNode(true);
+        newForm.querySelectorAll('input, select').forEach(field => {
+            field.name = field.name.replace(/\d+/, formCount);
+            field.id = field.id.replace(/\d+/, formCount);
+            field.value = ""; // Reseta os valores dos campos
         });
 
-        formsetContainer.addEventListener('click', function (event) {
-            if (event.target.classList.contains('remover-medicamento')) {
-                event.target.closest('.formset-row').remove();
-                totalForms.value = document.querySelectorAll('.formset-row').length;
-            }
-        });
+        formsetContainer.appendChild(newForm);
+        totalForms.value = formCount + 1;
     });
+
+    formsetContainer.addEventListener('click', function (event) {
+        if (event.target.classList.contains('remover-medicamento')) {
+            event.target.closest('.formset-row').remove();
+            totalForms.value = document.querySelectorAll('.formset-row').length;
+        }
+    });
+});
 </script>
 
 {% endblock %}

@@ -98,6 +98,7 @@ class LoginForm(forms.Form):
 
 from django import forms
 from .models import EntradaEstoque, DetalhesMedicamento, Medicamento, Fabricante, Localizacao
+from django.forms import inlineformset_factory
 
 class EntradaEstoqueForm(forms.ModelForm):
     valor_total = forms.DecimalField(
@@ -109,7 +110,7 @@ class EntradaEstoqueForm(forms.ModelForm):
     )
 
     data = forms.DateField(
-        input_formats=['%Y-%m-%d'],  # Django espera o formato ISO ao receber o dado do navegador
+        input_formats=['%Y-%m-%d'],
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
     )
 
@@ -126,33 +127,35 @@ class EntradaEstoqueForm(forms.ModelForm):
             'fornecedor': forms.Select(attrs={'class': 'form-control'}),
             'tipo_documento': forms.Select(attrs={'class': 'form-control'}),
             'numero_documento': forms.TextInput(attrs={'class': 'form-control'}),
-            'valor_total': forms.TextInput(attrs={'class': 'form-control valor-total'}),
             'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
-
 
     def clean_valor_total(self):
         valor = self.cleaned_data.get('valor_total')
         if isinstance(valor, str):
-            valor = valor.replace(".", "").replace(",", ".").replace("R$", "").strip()  # Converte 1.000,50 para 1000.50
+            valor = valor.replace(".", "").replace(",", ".").replace("R$", "").strip()
         try:
             return float(valor)
         except ValueError:
             raise forms.ValidationError("Digite um número válido.")
 
-    
-
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)  # Retira 'user' de kwargs
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        
-        if user and user.profile.estabelecimento:
+
+        # Atribuindo automaticamente o 'estabelecimento' do usuário
+        if user and hasattr(user, 'profile') and user.profile.estabelecimento:
             self.instance.estabelecimento = user.profile.estabelecimento
 
+        # Aplicando a classe 'form-control' a todos os campos de forma eficiente
+        self.apply_form_control()
 
-from django import forms
-from .models import DetalhesMedicamento, Estoque, Medicamento, Fabricante, Localizacao, EntradaEstoque
-from django.forms import inlineformset_factory
+    def apply_form_control(self):
+        """Aplica a classe 'form-control' a todos os campos do formulário, exceto checkboxes."""
+        for field_name, field in self.fields.items():
+            if not isinstance(field.widget, forms.CheckboxInput):  # Evita aplicar em checkboxes
+                field.widget.attrs['class'] = 'form-control'
+
 
 class DetalhesMedicamentoForm(forms.ModelForm):
     valor = forms.DecimalField(
@@ -168,35 +171,33 @@ class DetalhesMedicamentoForm(forms.ModelForm):
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
     )
 
+    class Meta:
+        model = DetalhesMedicamento
+        fields = ['medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante']
+        widgets = {
+            'medicamento': forms.Select(attrs={'class': 'form-control'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
+            'localizacao': forms.Select(attrs={'class': 'form-control'}),
+            'lote': forms.TextInput(attrs={'class': 'form-control'}),
+            'fabricante': forms.Select(attrs={'class': 'form-control'}),
+        }
+
     def clean_valor(self):
         valor = self.cleaned_data.get('valor')
         if isinstance(valor, str):
-            valor = valor.replace(".", "").replace(",", ".")  # Converte 1.000,50 para 1000.50
+            valor = valor.replace(".", "").replace(",", ".")
         try:
             return float(valor)
         except ValueError:
             raise forms.ValidationError("Digite um número válido.")
 
-    
-
-    class Meta:
-        model = DetalhesMedicamento
-        fields = ['medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante']
-
- 
-
-
-
 DetalhesMedicamentoFormSet = inlineformset_factory(
-    EntradaEstoque,  # O modelo principal ao qual o formset está relacionado
-    DetalhesMedicamento,  # O modelo secundário do formset
-    form=DetalhesMedicamentoForm,  # O formulário base do formset
-    fields=('medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante'
-),
-    extra=1,  # Número mínimo de formulários vazios para preenchimento
-    
+    EntradaEstoque,
+    DetalhesMedicamento,
+    form=DetalhesMedicamentoForm,
+    fields=('medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante'),
+    extra=1,
 )
-
 
 class EstabelecimentoForm(forms.ModelForm):
     class Meta:

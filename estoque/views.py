@@ -247,61 +247,52 @@ def lista_localizacoes(request):
     )
 
 from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
-from .models import Estoque, EntradaEstoque, DetalhesMedicamento
+from .models import EntradaEstoque, Estoque
 
 @login_required
 def entrada_estoque(request):
     if request.method == 'POST':
         form = EntradaEstoqueForm(request.POST, user=request.user)
         formset = DetalhesMedicamentoFormSet(request.POST)
-       
 
         if form.is_valid() and formset.is_valid():
             with transaction.atomic():
-                # Salva a entrada
                 entrada = form.save(commit=False)
                 entrada.user = request.user
                 entrada.save()
 
-                # Salva os detalhes dos medicamentos
-                for form in formset:
-                    detalhe = form.save(commit=False)
+                detalhes = formset.save(commit=False)
+                for detalhe in detalhes:
                     detalhe.entrada = entrada
-                    detalhe.estabelecimento = entrada.estabelecimento  # Associa o estabelecimento à entrada
+                    detalhe.estabelecimento = entrada.estabelecimento  
 
-                    # Verifica ou cria o estoque associado
                     estoque, created = Estoque.objects.get_or_create(
                         medicamento=detalhe.medicamento,
                         estabelecimento=entrada.estabelecimento,
                         defaults={'quantidade': detalhe.quantidade}
                     )
 
-                    # Atualiza a quantidade no estoque
                     if not created:
                         estoque.quantidade += detalhe.quantidade
                         estoque.save()
 
-                    # Associa o estoque ao detalhe e salva
                     detalhe.estoque = estoque
                     detalhe.save()
 
                 messages.success(request, 'Entrada de medicamentos concluída com sucesso.')
-                return redirect('sucesso')
-
+                return redirect('sucesso')  # Substitua por uma URL válida
     else:
-        form = EntradaEstoqueForm(request.POST, user=request.user)
-        formset = DetalhesMedicamentoFormSet(request.POST, instance=EntradaEstoque())  
+        form = EntradaEstoqueForm(user=request.user)  # Passa o usuário corretamente
+        formset = DetalhesMedicamentoFormSet()  # Garante que o formset seja criado corretamente
 
     return render(request, 'estoque/entrada_estoque.html', {
         'entrada_form': form,
         'detalhes_formset': formset,
     })
-
-
 
 
 
