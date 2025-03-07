@@ -99,7 +99,7 @@ class LoginForm(forms.Form):
 from django import forms
 from .models import EntradaEstoque, DetalhesMedicamento, Medicamento, Fabricante, Localizacao
 from django.forms import inlineformset_factory
-from datetime import datetime, date
+from datetime import date
 
 
 class EntradaEstoqueForm(forms.ModelForm):
@@ -136,7 +136,7 @@ class EntradaEstoqueForm(forms.ModelForm):
     def clean_data(self):
         data = self.cleaned_data.get('data')
 
-        if isinstance(data, datetime.date):  # Se já for um objeto date, retorna direto
+        if isinstance(data, date):  # Se já for um objeto date, retorna direto
             return data
 
         if data:
@@ -149,7 +149,7 @@ class EntradaEstoqueForm(forms.ModelForm):
     def clean_data_recebimento(self):
         data_recebimento = self.cleaned_data.get('data_recebimento')
 
-        if isinstance(data_recebimento, datetime.date):  # Se já for um objeto date, retorna direto
+        if isinstance(data_recebimento, date):  # Se já for um objeto date, retorna direto
             return data_recebimento
 
         if data_recebimento:

@@ -257,6 +257,7 @@ from .models import EntradaEstoque, Estoque
 def entrada_estoque(request):
     if request.method == 'POST':
         form = EntradaEstoqueForm(request.POST, user=request.user)
+        formset = DetalhesMedicamentoFormSet(request.POST)
         print("Data fornecida:", request.POST.get('data'))
         print("Data de recebimento fornecida:", request.POST.get('data_recebimento'))
     
