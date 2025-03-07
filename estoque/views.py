@@ -257,9 +257,16 @@ from .models import EntradaEstoque, Estoque
 def entrada_estoque(request):
     if request.method == 'POST':
         form = EntradaEstoqueForm(request.POST, user=request.user)
-        formset = DetalhesMedicamentoFormSet(request.POST)
+        print("Data fornecida:", request.POST.get('data'))
+        print("Data de recebimento fornecida:", request.POST.get('data_recebimento'))
+    
+        
 
         if form.is_valid() and formset.is_valid():
+            print("Erros no formset:", formset.errors)
+            for form in formset.forms:
+                print("Erros neste formulário:", form.errors)
+            print("Formulários válidos, salvando dados...")
             with transaction.atomic():
                 entrada = form.save(commit=False)
                 entrada.user = request.user
@@ -286,8 +293,11 @@ def entrada_estoque(request):
                 messages.success(request, 'Entrada de medicamentos concluída com sucesso.')
                 return redirect('sucesso')  # Substitua por uma URL válida
     else:
+        
         form = EntradaEstoqueForm(user=request.user)  # Passa o usuário corretamente
         formset = DetalhesMedicamentoFormSet()  # Garante que o formset seja criado corretamente
+        print("Erros no form:", form.errors)
+        print("Erros no formset:", formset.errors)
 
     return render(request, 'estoque/entrada_estoque.html', {
         'entrada_form': form,

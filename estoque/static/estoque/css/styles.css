@@ -102,9 +102,7 @@ footer {
   background-color: #0056b3;
 }
 
-.form-control {
-  border-radius: 10px;
-}
+
 
 .btn {
   margin: 5px;
@@ -125,36 +123,7 @@ footer {
   border-color: #1e7e34;
 }
 
-.form-group {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-  border-radius: 5px;
-  border: 1px solid #1676d7;
-  padding: 10px;
-}
 
-.form-group label {
-  margin-right: 5px;
-  flex: 1;
-  color: #343a40;
-  font-weight: bold;
-}
-
-.form-group input[type="text"],
-.form-group select {
-  flex: 1;
-  margin-right: 10px;
-  border: none;
-  outline: none;
-}
-
-.form-group input::placeholder,
-.form-group select::placeholder {
-  text-align: center;
-  color: #000204;
-  opacity: 0.6;
-}
 
 #detalhes-medicamentos-container .detalhes-medicamento-form {
   margin-bottom: 20px;
@@ -356,74 +325,8 @@ h6 {
   margin-top: 20px;
 }
 
-/* Estilo para os campos Select2 */
-.select2-container {
-  width: 100% !important;
-}
-
-.select2-selection {
-  height: 38px !important;
-  padding: 6px 12px !important;
-  border: 1px solid #ced4da !important;
-  border-radius: 4px !important;
-  box-sizing: border-box !important;
-  display: flex;
-  align-items: center;
-}
 
 
-/* Garante que o conteúdo do select2 não seja cortado */
-.select2-container--default .select2-selection--single .select2-selection__rendered {
-    white-space: nowrap; /* Evita que o texto quebre em várias linhas */
-    overflow: hidden;    /* Impede que o texto saia do campo */
-    text-overflow: ellipsis; /* Exibe "..." se o texto for muito longo */
-}
-
-/* Ajuste o comportamento de overflow para o campo select */
-.select2-container--default .select2-selection {
-    width: 100% !important; /* Garante que o campo ocupe 100% da largura disponível */
-    min-width: 150px; /* Ajuste o valor mínimo conforme necessário */
-    padding: 10px 15px; /* Adiciona mais espaço interno para acomodar o texto */
-}
-
-/* Ajusta o comportamento do placeholder */
-.select2-container--default .select2-selection--single .select2-selection__placeholder {
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-}
-
-/* Estilo para alinhar rótulos e campos de entrada */
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
-  color: #6c757d;
-}
-
-.form-group input,
-.form-group select,
-.select2-selection {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 1rem;
-  box-sizing: border-box;
-}
-
-/* Ajuste específico para campos de entrada e seleção */
-.form-group input {
-  height: 38px;
-}
-
-.form-group select {
-  height: 38px;
-}
 
 /* Centralizando o conteúdo da página de login */
 .login-container {
@@ -442,30 +345,7 @@ h6 {
   color: #fcfdfd; /* Cor do texto ao passar o mouse */
 }
 
-/* Adiciona esse CSS no arquivo de estilos do seu projeto, ou dentro do <style> no seu template */
-.select2-container .select2-selection--single {
-  height: 40px !important;  /* Ajuste a altura para garantir que o campo se ajusta corretamente */
-  padding-left: 10px !important;  /* Garante que o texto do placeholder não fique cortado */
-  padding-right: 10px !important;  /* Ajuste o padding se necessário */
-}
-
-.select2-container--default .select2-selection--single .select2-selection__rendered {
-  line-height: 36px !important;  /* Ajuste o alinhamento do texto */
-}
-
-.select2-container--default .select2-selection__arrow {
-  top: 8px !important;  /* Ajuste a posição da seta */
-}
-
-/* Estilo para o campo 'departamento' se não estiver usando o select2 */
-#id_departamento {
-  height: 40px;  /* Ajusta a altura do campo */
-  padding: 10px;  /* Adiciona padding para garantir que o texto não fique cortado */
-  font-size: 16px;  /* Ajusta o tamanho da fonte para melhorar a legibilidade */
-}
 
 
-.select2-container .select2-selection {
-    width: 100% !important;  /* Força o select2 a ocupar 100% da largura */
-}
+
 

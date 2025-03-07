@@ -2,8 +2,6 @@
 {% load crispy_forms_tags %}
 {% load widget_tweaks %}
 
-
-
 {% block content %}
 <h2>Entrada de Estoque de Medicamentos</h2>
 
@@ -11,89 +9,97 @@
     {% csrf_token %}
 
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-3">
             <div class="form-group">
                 <label for="{{ entrada_form.tipo.id_for_label }}">Tipo de Entrada</label>
                 {{ entrada_form.tipo|add_class:"form-control w-100" }}
             </div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-3">
             <div class="form-group">
-            <label for="{{ entrada_form.data.id_for_label }}">Data Nota Fiscal</label>
-            {{ entrada_form.data }}  <!-- Certifique-se de que o campo de data está sendo renderizado corretamente -->
-        </div>
-        
-
+                <label for="{{ entrada_form.tipo_documento.id_for_label }}">Tipo de Documento</label>
+                {{ entrada_form.tipo_documento|add_class:"form-control w-100" }}
+            </div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-3">
+            <div class="form-group">
+                <label for="{{ entrada_form.data.id_for_label }}">Data Nota Fiscal</label>
+                {{ entrada_form.data|add_class:"form-control w-100" }}
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="form-group">
+                <label for="{{ entrada_form.data_recebimento.id_for_label }}">Data Recebimento</label>
+                {{ entrada_form.data_recebimento|add_class:"form-control w-100" }}
+            </div>
+        </div>
+
+        <div class="col-md-3">
             <div class="form-group">
                 <label for="{{ entrada_form.fornecedor.id_for_label }}">Fornecedor</label>
-                {{ entrada_form.fornecedor }}
+                {{ entrada_form.fornecedor|add_class:"form-control w-100" }}
             </div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-3">
             <div class="form-group">
                 <label for="{{ entrada_form.numero_documento.id_for_label }}">Número do Documento</label>
-                {{ entrada_form.numero_documento }}
+                {{ entrada_form.numero_documento|add_class:"form-control w-100" }}
             </div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-3">
             <div class="form-group">
                 <label for="{{ entrada_form.valor_total.id_for_label }}">Valor Total</label>
-                {{ entrada_form.valor_total }}
+                {{ entrada_form.valor_total|add_class:"form-control w-100" }}
             </div>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-3">
             <div class="form-group">
                 <label for="{{ entrada_form.observacao.id_for_label }}">Observação</label>
-                {{ entrada_form.observacao }}
+                {{ entrada_form.observacao|add_class:"form-control w-100" }}
             </div>
         </div>
     </div>
 
-
-   <h3 class="mt-4">Detalhes dos Medicamentos</h3>
+    <h3 class="mt-4">Detalhes dos Medicamentos</h3>
     <div id="detalhes-formset">
-        {{ detalhes_formset.management_form }}  <!-- Isso deve estar antes do loop -->
+        {{ detalhes_formset.management_form }}
 
         {% for form in detalhes_formset %}
         <div class="form-row formset-row">
-        <div class="col-md-4 form-group">
-            <label>Medicamento</label>
-            {{ form.medicamento }}
+            <div class="col-md-8 form-group">
+                <label>Medicamento</label>
+                {{ form.medicamento|add_class:"form-control w-100" }}
+            </div>
+            <div class="col-md-2 form-group">
+                <label>Quantidade</label>
+                {{ form.quantidade|add_class:"form-control w-100" }}
+            </div>
+            <div class="col-md-2 form-group">
+                <label>Lote</label>
+                {{ form.lote|add_class:"form-control w-100" }}
+            </div>
+            <div class="col-md-3 form-group">
+                <label>Validade</label>
+                {{ form.validade|add_class:"form-control w-100" }}
+            </div>
+            <div class="col-md-3 form-group">
+                <label>Localização</label>
+                {{ form.localizacao|add_class:"form-control w-100" }}
+            </div>
+            <div class="col-md-3 form-group">
+                <label>Fabricante</label>
+                {{ form.fabricante|add_class:"form-control w-100" }}
+            </div>
+            <button type="button" class="btn btn-danger btn-sm remover-medicamento">Remover</button>
         </div>
-        <div class="col-md-2 form-group">
-            <label>Quantidade</label>
-            {{ form.quantidade }}
-        </div>
-        <div class="col-md-2 form-group">
-            <label>Lote</label>
-            {{ form.lote }}
-        </div>
-        <div class="col-md-2 form-group">
-            <label>Validade</label>
-            {{ form.validade }}
-        </div>
-        <div class="col-md-2 form-group">
-            <label>Localização</label>
-            {{ form.localizacao }}
-        </div>
-        <div class="col-md-2 form-group">
-            <label>Fabricante</label>
-            {{ form.fabricante }}
-        </div>
-        <button type="button" class="btn btn-danger btn-sm remover-medicamento">Remover</button>
+        {% endfor %}
     </div>
-{% endfor %}
-
-    </div>
-
-   
 
     <button type="button" id="adicionar-medicamento" class="btn btn-success mt-4">Adicionar Medicamento</button>
     <button type="submit" class="btn btn-primary mt-4">Salvar</button>
@@ -103,7 +109,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     const formsetContainer = document.getElementById('detalhes-formset');
     const addButton = document.getElementById('adicionar-medicamento');
-    const totalForms = document.querySelector('#id_form-TOTAL_FORMS'); // Certifique-se que pega o input correto
+    const totalForms = document.querySelector('#id_form-TOTAL_FORMS');
 
     addButton.addEventListener('click', function () {
         const formCount = parseInt(totalForms.value);

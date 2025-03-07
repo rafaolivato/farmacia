@@ -99,8 +99,11 @@ class LoginForm(forms.Form):
 from django import forms
 from .models import EntradaEstoque, DetalhesMedicamento, Medicamento, Fabricante, Localizacao
 from django.forms import inlineformset_factory
+from datetime import datetime, date
+
 
 class EntradaEstoqueForm(forms.ModelForm):
+
     valor_total = forms.DecimalField(
         required=True,
         max_digits=10,
@@ -130,8 +133,35 @@ class EntradaEstoqueForm(forms.ModelForm):
             'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
+    def clean_data(self):
+        data = self.cleaned_data.get('data')
+
+        if isinstance(data, datetime.date):  # Se já for um objeto date, retorna direto
+            return data
+
+        if data:
+            try:
+                return datetime.strptime(data, "%d/%m/%Y").date()
+            except ValueError:
+                raise forms.ValidationError("Formato de data inválido. Use DD/MM/AAAA.")
+        return data
+
+    def clean_data_recebimento(self):
+        data_recebimento = self.cleaned_data.get('data_recebimento')
+
+        if isinstance(data_recebimento, datetime.date):  # Se já for um objeto date, retorna direto
+            return data_recebimento
+
+        if data_recebimento:
+            try:
+                return datetime.strptime(data_recebimento, "%d/%m/%Y").date()
+            except ValueError:
+                raise forms.ValidationError("Formato de data inválido. Use DD/MM/AAAA.")
+        return data_recebimento
+
     def clean_valor_total(self):
         valor = self.cleaned_data.get('valor_total')
+        print(valor)
         if isinstance(valor, str):
             valor = valor.replace(".", "").replace(",", ".").replace("R$", "").strip()
         try:
@@ -181,6 +211,15 @@ class DetalhesMedicamentoForm(forms.ModelForm):
             'lote': forms.TextInput(attrs={'class': 'form-control'}),
             'fabricante': forms.Select(attrs={'class': 'form-control'}),
         }
+
+    def clean_validade(self):
+        validade = self.cleaned_data.get('validade')
+        if validade:
+            try:
+                return datetime.strptime(validade, "%d/%m/%Y").date()
+            except ValueError:
+                raise forms.ValidationError("Formato de validade inválido. Use DD/MM/AAAA.")
+        return validade
 
     def clean_valor(self):
         valor = self.cleaned_data.get('valor')
