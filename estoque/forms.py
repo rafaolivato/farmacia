@@ -23,7 +23,7 @@ from django.forms import modelformset_factory
 from django.db.models import signals
 from django import forms
 from django.forms import formset_factory
-
+from datetime import date
 from django import forms
 from .models import Medicamento, DetalhesMedicamento
 
@@ -97,9 +97,9 @@ class LoginForm(forms.Form):
     
 
 from django import forms
-from .models import EntradaEstoque, DetalhesMedicamento, Medicamento, Fabricante, Localizacao
+from datetime import datetime, date
 from django.forms import inlineformset_factory
-from datetime import date
+from .models import EntradaEstoque, DetalhesMedicamento, Medicamento
 
 
 class EntradaEstoqueForm(forms.ModelForm):
@@ -113,13 +113,13 @@ class EntradaEstoqueForm(forms.ModelForm):
     )
 
     data = forms.DateField(
-        input_formats=['%Y-%m-%d'],
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+        input_formats=['%d/%m/%Y'],
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'placeholder': 'DD/MM/AAAA'}) # Voltar para type date
     )
 
     data_recebimento = forms.DateField(
-        input_formats=['%Y-%m-%d'],
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+        input_formats=['%d/%m/%Y'],
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'placeholder': 'DD/MM/AAAA'}) # Voltar para type date
     )
 
     class Meta:
@@ -135,28 +135,24 @@ class EntradaEstoqueForm(forms.ModelForm):
 
     def clean_data(self):
         data = self.cleaned_data.get('data')
-
-        if isinstance(data, date):  # Se já for um objeto date, retorna direto
-            return data
-
-        if data:
+        if isinstance(data, str): # Verifica se data é uma string
             try:
                 return datetime.strptime(data, "%d/%m/%Y").date()
             except ValueError:
                 raise forms.ValidationError("Formato de data inválido. Use DD/MM/AAAA.")
+        elif isinstance(data, date): # Se for um objeto date, retorna direto
+            return data
         return data
 
     def clean_data_recebimento(self):
         data_recebimento = self.cleaned_data.get('data_recebimento')
-
-        if isinstance(data_recebimento, date):  # Se já for um objeto date, retorna direto
-            return data_recebimento
-
-        if data_recebimento:
+        if isinstance(data_recebimento, str): # Verifica se data_recebimento é uma string
             try:
                 return datetime.strptime(data_recebimento, "%d/%m/%Y").date()
             except ValueError:
                 raise forms.ValidationError("Formato de data inválido. Use DD/MM/AAAA.")
+        elif isinstance(data_recebimento, date): # Se for um objeto date, retorna direto
+            return data_recebimento
         return data_recebimento
 
     def clean_valor_total(self):
@@ -197,8 +193,8 @@ class DetalhesMedicamentoForm(forms.ModelForm):
     )
 
     validade = forms.DateField(
-        input_formats=['%Y-%m-%d'],
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+        input_formats=['%d/%m/%Y'],
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'placeholder': 'DD/MM/AAAA'}) # Voltar para type date
     )
 
     class Meta:
@@ -214,11 +210,13 @@ class DetalhesMedicamentoForm(forms.ModelForm):
 
     def clean_validade(self):
         validade = self.cleaned_data.get('validade')
-        if validade:
+        if isinstance(validade, str): # Verifica se validade é uma string
             try:
                 return datetime.strptime(validade, "%d/%m/%Y").date()
             except ValueError:
                 raise forms.ValidationError("Formato de validade inválido. Use DD/MM/AAAA.")
+        elif isinstance(validade, date): # Se for um objeto date, retorna direto
+            return validade
         return validade
 
     def clean_valor(self):
