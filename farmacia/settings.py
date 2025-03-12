@@ -170,3 +170,5 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'rafaolivato82@gmail.com'
 EMAIL_HOST_PASSWORD = 'xokige82'
+
+DATE_INPUT_FORMATS = ['%d/%m/%Y', '%Y-%m-%d', '%d.%m.%Y', '%d-%m-%Y']

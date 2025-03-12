@@ -253,58 +253,54 @@ from django.contrib import messages
 from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
 from .models import EntradaEstoque, Estoque
 
+
+
 @login_required
 def entrada_estoque(request):
     if request.method == 'POST':
         form = EntradaEstoqueForm(request.POST, user=request.user)
         formset = DetalhesMedicamentoFormSet(request.POST)
-        print("Data fornecida:", request.POST.get('data'))
-        print("Data de recebimento fornecida:", request.POST.get('data_recebimento'))
-    
-        
 
         if form.is_valid() and formset.is_valid():
-            print("Erros no formset:", formset.errors)
-            for form in formset.forms:
-                print("Erros neste formulário:", form.errors)
-            print("Formulários válidos, salvando dados...")
-            with transaction.atomic():
-                entrada = form.save(commit=False)
-                entrada.user = request.user
-                entrada.save()
+            try:
+                with transaction.atomic():
+                    entrada = form.save() # Salvando o form principal
 
-                detalhes = formset.save(commit=False)
-                for detalhe in detalhes:
-                    detalhe.entrada = entrada
-                    detalhe.estabelecimento = entrada.estabelecimento  
+                    detalhes = formset.save(commit=False)
+                    for detalhe in detalhes:
+                        detalhe.entrada = entrada
+                        detalhe.estabelecimento = entrada.estabelecimento
 
-                    estoque, created = Estoque.objects.get_or_create(
-                        medicamento=detalhe.medicamento,
-                        estabelecimento=entrada.estabelecimento,
-                        defaults={'quantidade': detalhe.quantidade}
-                    )
+                        estoque, created = Estoque.objects.get_or_create(
+                            medicamento=detalhe.medicamento,
+                            estabelecimento=entrada.estabelecimento,
+                            defaults={'quantidade': detalhe.quantidade}
+                        )
 
-                    if not created:
-                        estoque.quantidade += detalhe.quantidade
-                        estoque.save()
+                        if not created:
+                            estoque.quantidade += detalhe.quantidade
+                            estoque.save()
 
-                    detalhe.estoque = estoque
-                    detalhe.save()
+                        detalhe.estoque = estoque
+                        detalhe.save()
 
-                messages.success(request, 'Entrada de medicamentos concluída com sucesso.')
-                return redirect('sucesso')  # Substitua por uma URL válida
+                    messages.success(request, 'Entrada de medicamentos concluída com sucesso.')
+                    return redirect('sucesso')
+            except Exception as e:
+                messages.error(request, f'Ocorreu um erro ao salvar: {e}')
+        else:
+            messages.error(request, 'Por favor, corrija os erros no formulário.')
+            print(f"Erros no formulário: {form.errors.as_data()}")
+            print(f"Dados do formulário: {form.cleaned_data}")
+            print(f"Erros no formset: {formset.errors}")
     else:
-        
-        form = EntradaEstoqueForm(user=request.user)  # Passa o usuário corretamente
-        formset = DetalhesMedicamentoFormSet()  # Garante que o formset seja criado corretamente
-        print("Erros no form:", form.errors)
-        print("Erros no formset:", formset.errors)
+        form = EntradaEstoqueForm(user=request.user)
+        formset = DetalhesMedicamentoFormSet()
 
     return render(request, 'estoque/entrada_estoque.html', {
         'entrada_form': form,
         'detalhes_formset': formset,
     })
-
 
 
 @login_required
