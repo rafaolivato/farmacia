@@ -95,133 +95,24 @@ class LoginForm(forms.Form):
     operador = forms.CharField(max_length=100)
     senha = forms.CharField(widget=forms.PasswordInput)
     
-
 from django import forms
-from datetime import datetime, date
 from django.forms import inlineformset_factory
-from .models import EntradaEstoque, DetalhesMedicamento, Medicamento
-
+from .models import EntradaEstoque, DetalhesMedicamento
 
 class EntradaEstoqueForm(forms.ModelForm):
-
-    valor_total = forms.DecimalField(
-        required=True,
-        max_digits=10,
-        decimal_places=2,
-        widget=forms.TextInput(attrs={'class': 'form-control valor-total', 'placeholder': 'R$ 0,00'}),
-        initial=0.00
-    )
-
-    data = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'DD/MM/AAAA'})
-    )
-
-    data_recebimento = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'DD/MM/AAAA'})
-    )
-
     class Meta:
         model = EntradaEstoque
-        fields = ['tipo', 'data', 'data_recebimento', 'fornecedor', 'tipo_documento', 'numero_documento', 'valor_total', 'observacao']
+        fields = '__all__'
         widgets = {
-            'tipo': forms.Select(attrs={'class': 'form-control'}),
-            'fornecedor': forms.Select(attrs={'class': 'form-control'}),
-            'tipo_documento': forms.Select(attrs={'class': 'form-control'}),
-            'numero_documento': forms.TextInput(attrs={'class': 'form-control'}),
-            'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'estabelecimento': forms.HiddenInput(),
         }
-
-    def clean_data(self):
-        data = self.cleaned_data.get('data')
-        try:
-            return datetime.strptime(data, "%d/%m/%Y").date()
-        except ValueError:
-            raise forms.ValidationError("Formato de data inválido. Use DD/MM/AAAA.")
-
-    def clean_data_recebimento(self):
-        data_recebimento = self.cleaned_data.get('data_recebimento')
-        try:
-            return datetime.strptime(data_recebimento, "%d/%m/%Y").date()
-        except ValueError:
-            raise forms.ValidationError("Formato de data inválido. Use DD/MM/AAAA.")
-
-    def clean_valor_total(self):
-        valor = self.cleaned_data.get('valor_total')
-        print(f"Valor total antes da conversão: {valor}")
-        if isinstance(valor, str):
-            valor = valor.replace(".", "").replace(",", ".")
-        try:
-            valor = float(valor)
-            print(f"Valor total após a conversão: {valor}")
-            return valor
-        except ValueError:
-            raise forms.ValidationError("Digite um número válido.")
-
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-
-        # Atribuindo automaticamente o 'estabelecimento' do usuário
-        if user and hasattr(user, 'profile') and user.profile.estabelecimento:
-            self.instance.estabelecimento = user.profile.estabelecimento
-
-        # Aplicando a classe 'form-control' a todos os campos de forma eficiente
-        self.apply_form_control()
-
-    def apply_form_control(self):
-        """Aplica a classe 'form-control' a todos os campos do formulário, exceto checkboxes."""
-        for field_name, field in self.fields.items():
-            if not isinstance(field.widget, forms.CheckboxInput):  # Evita aplicar em checkboxes
-                field.widget.attrs['class'] = 'form-control'
-
-
-class DetalhesMedicamentoForm(forms.ModelForm):
-    valor = forms.DecimalField(
-        required=True,
-        max_digits=10,
-        decimal_places=2,
-        widget=forms.TextInput(attrs={'class': 'form-control valor-campo', 'placeholder': 'R$ 0,00'}),
-        initial=0.00
-    )
-
-    validade = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'DD/MM/AAAA'})
-    )
-
-
-    class Meta:
-        model = DetalhesMedicamento
-        fields = ['medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante']
-        widgets = {
-            'medicamento': forms.Select(attrs={'class': 'form-control'}),
-            'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
-            'localizacao': forms.Select(attrs={'class': 'form-control'}),
-            'lote': forms.TextInput(attrs={'class': 'form-control'}),
-            'fabricante': forms.Select(attrs={'class': 'form-control'}),
-        }
-
-    def clean_validade(self):
-        validade = self.cleaned_data.get('validade')
-        try:
-            return datetime.strptime(validade, "%d/%m/%Y").date()
-        except ValueError:
-            raise forms.ValidationError("Formato de validade inválido. Use DD/MM/AAAA.")
-
-    def clean_valor(self):
-        valor = self.cleaned_data.get('valor')
-        if isinstance(valor, str):
-            valor = valor.replace(".", "").replace(",", ".")
-        try:
-            return float(valor)
-        except ValueError:
-            raise forms.ValidationError("Digite um número válido.")
 
 DetalhesMedicamentoFormSet = inlineformset_factory(
     EntradaEstoque,
     DetalhesMedicamento,
-    form=DetalhesMedicamentoForm,
-    fields=('medicamento', 'quantidade', 'localizacao', 'validade', 'lote', 'valor', 'fabricante'),
+    fields=('medicamento', 'quantidade', 'validade', 'lote', 'valor', 'localizacao', 'fabricante'),
     extra=1,
+    can_delete=True
 )
 
 class EstabelecimentoForm(forms.ModelForm):

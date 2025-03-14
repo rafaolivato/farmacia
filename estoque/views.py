@@ -25,7 +25,6 @@ from .forms import (
     FornecedorForm,
     EntradaEstoqueForm,
     DetalhesMedicamentoFormSet,
-    DetalhesMedicamentoForm,
     LocalizacaoForm,
     FabricanteForm,
     EstabelecimentoForm,
@@ -252,56 +251,54 @@ from django.db import transaction
 from django.contrib import messages
 from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
 from .models import EntradaEstoque, Estoque
-
+from django.shortcuts import render, redirect
+from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
+from .models import Estoque,Profile
 
 
 @login_required
+
 def entrada_estoque(request):
+    try:
+        user_profile = Profile.objects.get(user=request.user)
+    except Profile.DoesNotExist:
+        # Lidar com o caso em que o perfil do usuário não existe
+        return render(request, 'estoque/perfil_ausente.html')  # Crie um template para isso
+
     if request.method == 'POST':
-        form = EntradaEstoqueForm(request.POST, user=request.user)
+        form = EntradaEstoqueForm(request.POST)
         formset = DetalhesMedicamentoFormSet(request.POST)
 
         if form.is_valid() and formset.is_valid():
-            try:
-                with transaction.atomic():
-                    entrada = form.save() # Salvando o form principal
+            entrada = form.save(commit=False)
+            entrada.user = request.user
+            entrada.estabelecimento = user_profile.estabelecimento  # Obter o estabelecimento do perfil
+            entrada.save()
 
-                    detalhes = formset.save(commit=False)
-                    for detalhe in detalhes:
-                        detalhe.entrada = entrada
-                        detalhe.estabelecimento = entrada.estabelecimento
+            instances = formset.save(commit=False)
+            for instance in instances:
+                estoque = Estoque.objects.filter(
+                    estabelecimento=entrada.estabelecimento,
+                    medicamento=instance.medicamento
+                ).first()
 
-                        estoque, created = Estoque.objects.get_or_create(
-                            medicamento=detalhe.medicamento,
-                            estabelecimento=entrada.estabelecimento,
-                            defaults={'quantidade': detalhe.quantidade}
-                        )
+                if estoque:
+                    instance.estoque = estoque
+                else:
+                    estoque = Estoque.objects.create(
+                        estabelecimento=entrada.estabelecimento,
+                        medicamento=instance.medicamento
+                    )
+                    instance.estoque = estoque
+                instance.entrada = entrada
+                instance.save()
 
-                        if not created:
-                            estoque.quantidade += detalhe.quantidade
-                            estoque.save()
-
-                        detalhe.estoque = estoque
-                        detalhe.save()
-
-                    messages.success(request, 'Entrada de medicamentos concluída com sucesso.')
-                    return redirect('sucesso')
-            except Exception as e:
-                messages.error(request, f'Ocorreu um erro ao salvar: {e}')
-        else:
-            messages.error(request, 'Por favor, corrija os erros no formulário.')
-            print(f"Erros no formulário: {form.errors.as_data()}")
-            print(f"Dados do formulário: {form.cleaned_data}")
-            print(f"Erros no formset: {formset.errors}")
+            return redirect('sucesso')
     else:
-        form = EntradaEstoqueForm(user=request.user)
+        form = EntradaEstoqueForm(initial={'estabelecimento': user_profile.estabelecimento})
         formset = DetalhesMedicamentoFormSet()
 
-    return render(request, 'estoque/entrada_estoque.html', {
-        'entrada_form': form,
-        'detalhes_formset': formset,
-    })
-
+    return render(request, 'estoque/entrada_estoque.html', {'form': form, 'formset': formset})
 
 @login_required
 def cadastrar_estabelecimento(request):
