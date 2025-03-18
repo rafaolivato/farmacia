@@ -247,23 +247,23 @@ def lista_localizacoes(request):
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.contrib import messages
-from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
-from .models import EntradaEstoque, Estoque
-from django.shortcuts import render, redirect
-from .forms import EntradaEstoqueForm, DetalhesMedicamentoFormSet
-from .models import Estoque,Profile
-
+from .forms import EntradaEstoqueForm, DetalhesMedicamentoForm
+from .models import EntradaEstoque, Estoque, DetalhesMedicamento, Profile
+from django.forms import modelformset_factory
 
 @login_required
-
 def entrada_estoque(request):
     try:
         user_profile = Profile.objects.get(user=request.user)
     except Profile.DoesNotExist:
-        # Lidar com o caso em que o perfil do usuário não existe
-        return render(request, 'estoque/perfil_ausente.html')  # Crie um template para isso
+        return render(request, 'estoque/perfil_ausente.html')
+
+    DetalhesMedicamentoFormSet = modelformset_factory(
+        DetalhesMedicamento,
+        form=DetalhesMedicamentoForm,
+        extra=1,
+        can_delete=False
+    )
 
     if request.method == 'POST':
         form = EntradaEstoqueForm(request.POST)
@@ -272,31 +272,29 @@ def entrada_estoque(request):
         if form.is_valid() and formset.is_valid():
             entrada = form.save(commit=False)
             entrada.user = request.user
-            entrada.estabelecimento = user_profile.estabelecimento  # Obter o estabelecimento do perfil
+            entrada.estabelecimento = user_profile.estabelecimento
             entrada.save()
 
             instances = formset.save(commit=False)
             for instance in instances:
-                estoque = Estoque.objects.filter(
-                    estabelecimento=entrada.estabelecimento,
-                    medicamento=instance.medicamento
-                ).first()
-
-                if estoque:
-                    instance.estoque = estoque
-                else:
-                    estoque = Estoque.objects.create(
-                        estabelecimento=entrada.estabelecimento,
-                        medicamento=instance.medicamento
-                    )
-                    instance.estoque = estoque
+                instance.estabelecimento = entrada.estabelecimento
                 instance.entrada = entrada
+
+                estoque, created = Estoque.objects.get_or_create(
+                    estabelecimento=entrada.estabelecimento,
+                    medicamento=instance.medicamento,
+                    defaults={'quantidade': 0}
+                )
+                instance.estoque = estoque
                 instance.save()
+
+                estoque.quantidade += instance.quantidade
+                estoque.save()
 
             return redirect('sucesso')
     else:
         form = EntradaEstoqueForm(initial={'estabelecimento': user_profile.estabelecimento})
-        formset = DetalhesMedicamentoFormSet()
+        formset = DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none())  # Inicializa sem instâncias
 
     return render(request, 'estoque/entrada_estoque.html', {'form': form, 'formset': formset})
 

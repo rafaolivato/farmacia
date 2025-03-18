@@ -6,16 +6,38 @@
     <h1>Entrada de Estoque</h1>
     <form method="post">
         {% csrf_token %}
-        <div class="form-group">
-            {{ form.as_p }}
-        </div>
-        <div class="form-group">
-            <h2>Detalhes do Medicamento</h2>
-            {{ formset.management_form }}
+        {{ form.as_p }}
+        {{ formset.management_form }}
+        <div id="formset-container">
             {% for form_detalhe in formset %}
                 {{ form_detalhe.as_p }}
             {% endfor %}
         </div>
-        <button type="submit" class="btn btn-primary">Salvar</button>
+        <button type="button" id="adicionar-medicamento">Adicionar Medicamento</button>
+        <button type="submit">Salvar</button>
     </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const adicionarMedicamentoBtn = document.getElementById('adicionar-medicamento');
+            const formsetContainer = document.getElementById('formset-container');
+            const totalForms = document.getElementById('id_form-TOTAL_FORMS'); // ID correto
+            const formPrefix = 'form'; // Prefix correto
+
+            adicionarMedicamentoBtn.addEventListener('click', function() {
+                if (!totalForms) {
+                    console.error('Elemento id_form-TOTAL_FORMS não encontrado.');
+                    return;
+                }
+                const formCount = parseInt(totalForms.value);
+                const newForm = document.querySelectorAll(`[id^=${formPrefix}-__prefix__]`);
+                const clonedForm = newForm[0].cloneNode(true);
+
+                clonedForm.innerHTML = clonedForm.innerHTML.replace(/__prefix__/g, formCount);
+                formsetContainer.appendChild(clonedForm);
+
+                totalForms.value = formCount + 1;
+            });
+        });
+    </script>
 {% endblock %}

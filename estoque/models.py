@@ -130,7 +130,7 @@ class EntradaEstoque(models.Model):
     numero_documento = models.CharField(max_length=50, verbose_name="Número do Documento")
     valor_total = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, verbose_name="Valor Total")
     observacao = models.CharField(max_length=100, blank=True, null=True, verbose_name="Observação")
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Substituir operador por user
+    user = models.ForeignKey(User, on_delete=models.CASCADE) 
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -160,6 +160,7 @@ class DetalhesMedicamento(models.Model):
     localizacao = models.ForeignKey(Localizacao, on_delete=models.SET_NULL, null=True, blank=True,verbose_name=u"Localização")
     fabricante = models.ForeignKey(Fabricante, on_delete=models.SET_NULL, null=True, blank=True)
     estabelecimento = models.ForeignKey('Estabelecimento', on_delete=models.CASCADE)
+    
     def save(self, *args, **kwargs):
         existing_record = None  # Garante que a variável sempre tem um valor
     

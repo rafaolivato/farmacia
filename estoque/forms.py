@@ -105,6 +105,7 @@ class EntradaEstoqueForm(forms.ModelForm):
         fields = '__all__'
         widgets = {
             'estabelecimento': forms.HiddenInput(),
+            'user' : forms.HiddenInput(),
         }
 
 DetalhesMedicamentoFormSet = inlineformset_factory(
@@ -112,7 +113,7 @@ DetalhesMedicamentoFormSet = inlineformset_factory(
     DetalhesMedicamento,
     fields=('medicamento', 'quantidade', 'validade', 'lote', 'valor', 'localizacao', 'fabricante'),
     extra=1,
-    can_delete=True
+    
 )
 
 class EstabelecimentoForm(forms.ModelForm):
@@ -407,3 +408,18 @@ class LoteSelecionadoForm(forms.Form):
     quantidade_selecionada = forms.IntegerField(min_value=1, label="Quantidade")
 
 LoteSelecionadoFormSet = formset_factory(LoteSelecionadoForm, extra=0)
+
+
+from django import forms
+from .models import DetalhesMedicamento
+
+class DetalhesMedicamentoForm(forms.ModelForm):
+    class Meta:
+        model = DetalhesMedicamento
+        fields = '__all__' 
+        widgets = {
+            'estabelecimento': forms.HiddenInput(),
+            'estoque' : forms.HiddenInput(),
+            'estabelecimento': forms.HiddenInput(),
+            'entrada' : forms.HiddenInput(),
+        }
