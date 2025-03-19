@@ -102,11 +102,20 @@ from .models import EntradaEstoque, DetalhesMedicamento
 class EntradaEstoqueForm(forms.ModelForm):
     class Meta:
         model = EntradaEstoque
-        fields = '__all__'
+        fields = ['tipo', 'data', 'data_recebimento', 'fonte_financiamento', 'fornecedor_tipo', 'fornecedor', 'tipo_documento', 'numero_documento', 'valor_total', 'observacao'] #removido o campo user
         widgets = {
-            'estabelecimento': forms.HiddenInput(),
-            'user' : forms.HiddenInput(),
+            'tipo': forms.Select(attrs={'class': 'form-control'}),
+            'data': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'data_recebimento': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fonte_financiamento': forms.Select(attrs={'class': 'form-control'}),
+            'fornecedor_tipo': forms.Select(attrs={'class': 'form-control'}),
+            'fornecedor': forms.Select(attrs={'class': 'form-control'}),
+            'tipo_documento': forms.Select(attrs={'class': 'form-control'}),
+            'numero_documento': forms.TextInput(attrs={'class': 'form-control'}),
+            'valor_total': forms.NumberInput(attrs={'class': 'form-control'}),
+            'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+        
 
 DetalhesMedicamentoFormSet = inlineformset_factory(
     EntradaEstoque,
@@ -120,7 +129,6 @@ class EstabelecimentoForm(forms.ModelForm):
     class Meta:
         model = Estabelecimento
         fields = ['nome', 'codigo_cnes', 'farmaceutico_responsavel', 'imagem_logotipo', 'tipo_estabelecimento']
-
 
       
 class MedicoForm(forms.ModelForm):
@@ -416,10 +424,14 @@ from .models import DetalhesMedicamento
 class DetalhesMedicamentoForm(forms.ModelForm):
     class Meta:
         model = DetalhesMedicamento
-        fields = '__all__' 
+        fields = ['medicamento', 'lote', 'quantidade', 'validade', 'valor', 'localizacao', 'fabricante']
         widgets = {
-            'estabelecimento': forms.HiddenInput(),
-            'estoque' : forms.HiddenInput(),
-            'estabelecimento': forms.HiddenInput(),
-            'entrada' : forms.HiddenInput(),
+            'medicamento': forms.Select(attrs={'class': 'form-control'}),
+            'lote': forms.TextInput(attrs={'class': 'form-control'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
+            'validade': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'valor': forms.NumberInput(attrs={'class': 'form-control'}),
+            'localizacao': forms.Select(attrs={'class': 'form-control'}),
+            'fabricante': forms.Select(attrs={'class': 'form-control'}),
         }
+

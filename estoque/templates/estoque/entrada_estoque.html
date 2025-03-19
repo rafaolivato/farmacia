@@ -4,6 +4,15 @@
 
 {% block content %}
     <h1>Entrada de Estoque</h1>
+
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
@@ -21,16 +30,22 @@
         document.addEventListener('DOMContentLoaded', function() {
             const adicionarMedicamentoBtn = document.getElementById('adicionar-medicamento');
             const formsetContainer = document.getElementById('formset-container');
-            const totalForms = document.getElementById('id_form-TOTAL_FORMS'); // ID correto
-            const formPrefix = 'form'; // Prefix correto
+            const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+            const formPrefix = 'form';
 
             adicionarMedicamentoBtn.addEventListener('click', function() {
                 if (!totalForms) {
                     console.error('Elemento id_form-TOTAL_FORMS não encontrado.');
                     return;
                 }
+                
                 const formCount = parseInt(totalForms.value);
                 const newForm = document.querySelectorAll(`[id^=${formPrefix}-__prefix__]`);
+                console.log(newForm); // Adicione esta linha para depuração
+                if (newForm.length === 0) {
+                    console.error('Nenhum elemento encontrado com o prefixo form-__prefix__.');
+                    return;
+                }
                 const clonedForm = newForm[0].cloneNode(true);
 
                 clonedForm.innerHTML = clonedForm.innerHTML.replace(/__prefix__/g, formCount);

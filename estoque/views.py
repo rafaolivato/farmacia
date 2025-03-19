@@ -250,6 +250,8 @@ from django.contrib.auth.decorators import login_required
 from .forms import EntradaEstoqueForm, DetalhesMedicamentoForm
 from .models import EntradaEstoque, Estoque, DetalhesMedicamento, Profile
 from django.forms import modelformset_factory
+import random  # Importe o módulo random
+from django.contrib import messages
 
 @login_required
 def entrada_estoque(request):
@@ -271,30 +273,31 @@ def entrada_estoque(request):
 
         if form.is_valid() and formset.is_valid():
             entrada = form.save(commit=False)
-            entrada.user = request.user
+            entrada.user = request.user # adiciona o user logado
             entrada.estabelecimento = user_profile.estabelecimento
+            entrada.numero_aleatorio = random.randint(1000, 9999)
             entrada.save()
 
             instances = formset.save(commit=False)
             for instance in instances:
-                instance.estabelecimento = entrada.estabelecimento
-                instance.entrada = entrada
-
+                instance.estabelecimento = user_profile.estabelecimento #adiciona o estabelecimento do user
+                instance.entrada = entrada #adiciona a entrada
                 estoque, created = Estoque.objects.get_or_create(
                     estabelecimento=entrada.estabelecimento,
                     medicamento=instance.medicamento,
                     defaults={'quantidade': 0}
                 )
-                instance.estoque = estoque
+                instance.estoque = estoque #adiciona o estoque
                 instance.save()
 
                 estoque.quantidade += instance.quantidade
                 estoque.save()
-
+                
+            messages.success(request, 'Entrada de estoque concluída com sucesso.')  # Adicione a mensagem de sucesso
             return redirect('sucesso')
     else:
         form = EntradaEstoqueForm(initial={'estabelecimento': user_profile.estabelecimento})
-        formset = DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none())  # Inicializa sem instâncias
+        formset = DetalhesMedicamentoFormSet(queryset=DetalhesMedicamento.objects.none())
 
     return render(request, 'estoque/entrada_estoque.html', {'form': form, 'formset': formset})
 
