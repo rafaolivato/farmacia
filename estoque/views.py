@@ -69,14 +69,16 @@ def lista_medicamentos(request):
 
     estabelecimento = request.user.profile.estabelecimento
 
+    # Buscar estoque atual de cada medicamento no estabelecimento
     estoques = Estoque.objects.filter(estabelecimento=estabelecimento).values(
         "medicamento__id", "medicamento__nome"
     ).annotate(
         quantidade_em_estoque=Sum("quantidade")
     )
 
+    # Buscar detalhes dos medicamentos, incluindo lote, validade e fabricante
     detalhes_medicamentos = list(DetalhesMedicamento.objects.filter(
-        Q(estoque__estabelecimento=estabelecimento) | Q(estoque__estabelecimento__isnull=True)
+        estoque__estabelecimento=estabelecimento  # Filtra apenas os do estabelecimento do usuário
     ).values(
         "medicamento__id", "medicamento__nome", "localizacao", "validade", "lote", "fabricante"
     ).annotate(
@@ -84,33 +86,20 @@ def lista_medicamentos(request):
         total_valor=Sum(F("quantidade") * F("valor"))
     ).order_by("medicamento__nome", "lote"))
 
+    # Criar um dicionário com o estoque atual para cada medicamento
     estoque_dict = {item["medicamento__id"]: item["quantidade_em_estoque"] for item in estoques}
 
+    # Atualizar os detalhes com a quantidade total em estoque
     for item in detalhes_medicamentos:
+        
         item["quantidade_em_estoque"] = estoque_dict.get(item["medicamento__id"], 0)
+        item["vencimento_proximo"] = item["validade"] and item["validade"] <= now_plus_3_months
 
-    medicamentos_no_detalhes = {item["medicamento__id"] for item in detalhes_medicamentos}
 
-    for item in estoques:
-        if item["medicamento__id"] not in medicamentos_no_detalhes:
-            # Buscar lote e validade mais recente no DetalhesMedicamento
-            detalhe = DetalhesMedicamento.objects.filter(
-                medicamento_id=item["medicamento__id"],
-                estoque__estabelecimento=estabelecimento
-            ).order_by("-validade").first()  # Ordena do mais recente para o mais antigo
+    # Remover medicamentos com estoque zerado
+    detalhes_medicamentos = [item for item in detalhes_medicamentos if item["quantidade_em_estoque"] > 0]
 
-            detalhes_medicamentos.append({
-                "medicamento__id": item["medicamento__id"],
-                "medicamento__nome": item["medicamento__nome"],
-                "localizacao": detalhe.localizacao if detalhe else "N/A",
-                "validade": detalhe.validade if detalhe else "N/A",
-                "lote": detalhe.lote if detalhe else "N/A",
-                "fabricante":detalhe.fabricante if detalhe else "N/A",
-                "total_quantidade": 0,
-                "total_valor": 0,
-                "quantidade_em_estoque": item["quantidade_em_estoque"]
-            })
-
+    # Cálculo do valor total do estoque
     total_valor_geral = sum(item["total_valor"] or 0 for item in detalhes_medicamentos)
 
     return render(
@@ -449,9 +438,15 @@ def nova_dispensacao(request):
                         messages.error(request, f"Estoque insuficiente para {medicamento.medicamento}!")
                         return redirect("nova_dispensacao")
 
+                    # DEBUG: Verificando o estoque antes da subtração
+                    print(f"Antes da atualização: {estoque.medicamento.nome} - Estoque: {estoque.quantidade}")
+
                     # Atualizar o estoque total do estabelecimento
                     estoque.quantidade -= medicamento.quantidade
                     estoque.save()
+
+                    # DEBUG: Verificando o estoque após a subtração
+                    print(f"Depois da atualização: {estoque.medicamento.nome} - Estoque: {estoque.quantidade}")
 
                     # Atualizar os lotes, priorizando os mais antigos
                     detalhes_estoque = DetalhesMedicamento.objects.filter(
@@ -466,6 +461,9 @@ def nova_dispensacao(request):
                         if quantidade_a_reduzir <= 0:
                             break  # Se toda a quantidade já foi retirada, sai do loop
 
+                        # DEBUG: Exibir informações sobre o lote antes da alteração
+                        print(f"Antes da atualização do lote: {lote.medicamento.nome} - Lote: {lote.lote} - Quantidade: {lote.quantidade}")
+
                         if lote.quantidade >= quantidade_a_reduzir:
                             lote.quantidade -= quantidade_a_reduzir
                             lote.save()
@@ -474,6 +472,9 @@ def nova_dispensacao(request):
                             quantidade_a_reduzir -= lote.quantidade
                             lote.quantidade = 0
                             lote.save()
+
+                        # DEBUG: Exibir informações sobre o lote após a alteração
+                        print(f"Depois da atualização do lote: {lote.medicamento.nome} - Lote: {lote.lote} - Quantidade: {lote.quantidade}")
 
                     medicamento.save()  # Salva a dispensação após a atualização do estoque
 
@@ -496,7 +497,6 @@ def nova_dispensacao(request):
 
     dispensacoes_recentes = Dispensacao.objects.all().order_by("-data_dispensacao")[:3]
 
-    
     return render(
         request,
         "estoque/nova_dispensacao.html",
@@ -507,6 +507,7 @@ def nova_dispensacao(request):
             "dispensacoes_recentes": dispensacoes_recentes,
         },
     )
+
 
 
 def detalhes_dispensacao(request, id):

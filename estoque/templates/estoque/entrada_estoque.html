@@ -19,39 +19,44 @@
         {{ formset.management_form }}
         <div id="formset-container">
             {% for form_detalhe in formset %}
-                {{ form_detalhe.as_p }}
+                <div class="form-detalhe">
+                    {{ form_detalhe.as_p }}
+                </div>
             {% endfor %}
         </div>
-        <button type="button" id="adicionar-medicamento">Adicionar Medicamento</button>
-        <button type="submit">Salvar</button>
+        <button type="button" class="btn btn-secondary" id="add-medicamento">Adicionar Medicamento</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
     </form>
-
+ 
+        
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const adicionarMedicamentoBtn = document.getElementById('adicionar-medicamento');
             const formsetContainer = document.getElementById('formset-container');
             const totalForms = document.getElementById('id_form-TOTAL_FORMS');
-            const formPrefix = 'form';
+
+            // Pegar um formulário existente para servir como modelo
+            const emptyForm = document.querySelector('.form-detalhe');
+            if (!emptyForm) {
+                console.error('Nenhum formulário base encontrado para clonagem.');
+                return;
+            }
+            const formTemplate = emptyForm.cloneNode(true); // Clona um formulário
+
+            // Limpar os valores do formulário clonado
+            formTemplate.querySelectorAll('input, select, textarea').forEach(field => {
+                field.value = '';  // Limpa os valores dos campos
+            });
 
             adicionarMedicamentoBtn.addEventListener('click', function() {
-                if (!totalForms) {
-                    console.error('Elemento id_form-TOTAL_FORMS não encontrado.');
-                    return;
-                }
-                
                 const formCount = parseInt(totalForms.value);
-                const newForm = document.querySelectorAll(`[id^=${formPrefix}-__prefix__]`);
-                console.log(newForm); // Adicione esta linha para depuração
-                if (newForm.length === 0) {
-                    console.error('Nenhum elemento encontrado com o prefixo form-__prefix__.');
-                    return;
-                }
-                const clonedForm = newForm[0].cloneNode(true);
 
-                clonedForm.innerHTML = clonedForm.innerHTML.replace(/__prefix__/g, formCount);
-                formsetContainer.appendChild(clonedForm);
+                // Criar um novo formulário baseado no modelo
+                const newForm = formTemplate.cloneNode(true);
+                newForm.innerHTML = newForm.innerHTML.replace(/form-(\d+)/g, `form-${formCount}`);
 
-                totalForms.value = formCount + 1;
+                formsetContainer.appendChild(newForm);
+                totalForms.value = formCount + 1;  // Atualizar a contagem de formulários
             });
         });
     </script>

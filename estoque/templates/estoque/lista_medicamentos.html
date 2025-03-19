@@ -13,19 +13,19 @@
                     <th>Validade</th>
                     <th>Lote</th>
                     <th>Quantidade em Estoque</th>
-                    <th>Quantidade Total</th>
                     <th>Valor Total</th>
                 </tr>
             </thead>
             <tbody>
                 {% for medicamento in detalhes_medicamentos %}
-                <tr>
+                        
+                <tr {% if medicamento.vencimento_proximo %} class="vencendo" {% endif %}>
                     <td>{{ medicamento.medicamento__nome }}</td>
                     <td>{{ medicamento.localizacao }}</td>
                     <td>{{ medicamento.validade|date:"d/m/Y" }}</td>
                     <td>{{ medicamento.lote }}</td>
                     <td>{{ medicamento.quantidade_em_estoque }}</td>
-                    <td>{{ medicamento.total_quantidade }}</td>
+                    
                     <td class="text-success font-weight-bold">R$ {{ medicamento.total_valor|floatformat:2 }}</td>
                 </tr>
                 {% empty %}

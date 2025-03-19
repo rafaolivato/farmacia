@@ -345,6 +345,9 @@ h6 {
   color: #fcfdfd; /* Cor do texto ao passar o mouse */
 }
 
+.vencendo {
+    background-color: yellow !important;
+}
 
 
 
