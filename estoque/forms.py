@@ -213,53 +213,38 @@ class DistribuicaoForm(forms.ModelForm):
 
 
 from django import forms
-from .models import Medicamento, DetalhesMedicamento, Estabelecimento
+from django.forms import formset_factory
+from .models import DistribuicaoMedicamento, Medicamento, DetalhesMedicamento, Estabelecimento
 
-class DistribuicaoMedicamentoForm(forms.Form):
-    medicamento = forms.ModelChoiceField(
-        queryset=Medicamento.objects.none(),
-        label="Medicamento",
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
-    lote = forms.ModelChoiceField(
-        queryset=DetalhesMedicamento.objects.none(),
-        label="Lote",
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
-    quantidade = forms.IntegerField(
-        label="Quantidade",
-        min_value=1,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
-    )
-    estabelecimento_destino = forms.ModelChoiceField(
-        queryset=Estabelecimento.objects.none(),
-        label="Estabelecimento Destino",
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
+class DistribuicaoMedicamentoForm(forms.ModelForm):
+    class Meta:
+        model = DistribuicaoMedicamento
+        fields = ['medicamento', 'lote', 'quantidade']
 
-    def __init__(self, *args, **kwargs):
-        estabelecimento_origem = kwargs.pop('estabelecimento_origem', None)
+    def __init__(self, *args, estabelecimento_origem=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         if estabelecimento_origem:
-            # Filtrar medicamentos disponíveis no estoque do estabelecimento logado
-            medicamentos_disponiveis = Medicamento.objects.filter(
+            # Filtrar apenas medicamentos disponíveis no estoque do estabelecimento logado
+            self.fields['medicamento'].queryset = Medicamento.objects.filter(
                 detalhesmedicamento__estabelecimento=estabelecimento_origem,
                 detalhesmedicamento__quantidade__gt=0
             ).distinct()
 
-            self.fields['medicamento'].queryset = medicamentos_disponiveis
-
-            # Filtrar lotes do estabelecimento logado
+            # Filtrar apenas os lotes disponíveis no estoque do estabelecimento logado
             self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
                 estabelecimento=estabelecimento_origem,
                 quantidade__gt=0
             )
 
-            # Excluir o estabelecimento logado da lista de destinos
-            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.exclude(
-                id=estabelecimento_origem.id
-            )
+# Criar um formset baseado no ModelForm acima
+DistribuicaoMedicamentoFormSet = forms.modelformset_factory(
+    DistribuicaoMedicamento,
+    form=DistribuicaoMedicamentoForm,
+    extra=1,  # Número de formulários extras
+    can_delete=True  # Permitir excluir um item
+)
+
 
 
 from django import forms

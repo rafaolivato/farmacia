@@ -19,7 +19,7 @@
             <tbody>
                 {% for medicamento in detalhes_medicamentos %}
                         
-                <tr {% if medicamento.vencimento_proximo %} class="vencendo" {% endif %}>
+                <tr {% if medicamento.vencimento_proximo %} class="table-danger font-weight-bold" {% endif %}>
                     <td>{{ medicamento.medicamento__nome }}</td>
                     <td>{{ medicamento.localizacao }}</td>
                     <td>{{ medicamento.validade|date:"d/m/Y" }}</td>

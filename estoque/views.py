@@ -69,35 +69,35 @@ def lista_medicamentos(request):
 
     estabelecimento = request.user.profile.estabelecimento
 
-    # Buscar estoque atual de cada medicamento no estabelecimento
-    estoques = Estoque.objects.filter(estabelecimento=estabelecimento).values(
-        "medicamento__id", "medicamento__nome"
-    ).annotate(
-        quantidade_em_estoque=Sum("quantidade")
+    # Buscar detalhes dos medicamentos, agrupando por medicamento e lote
+    detalhes_medicamentos = list(
+        DetalhesMedicamento.objects.filter(
+            estoque__estabelecimento=estabelecimento
+        )
+        .values(
+            "medicamento__id",
+            "medicamento__nome",
+            "localizacao",
+            "validade",
+            "lote",
+            "fabricante",
+        )
+        .annotate(
+            quantidade_em_estoque=Sum("quantidade"),  # Quantidade específica por lote
+            total_valor=Sum(F("quantidade") * F("valor")),
+        )
+        .order_by("medicamento__nome", "lote")
     )
 
-    # Buscar detalhes dos medicamentos, incluindo lote, validade e fabricante
-    detalhes_medicamentos = list(DetalhesMedicamento.objects.filter(
-        estoque__estabelecimento=estabelecimento  # Filtra apenas os do estabelecimento do usuário
-    ).values(
-        "medicamento__id", "medicamento__nome", "localizacao", "validade", "lote", "fabricante"
-    ).annotate(
-        total_quantidade=Sum("quantidade"),
-        total_valor=Sum(F("quantidade") * F("valor"))
-    ).order_by("medicamento__nome", "lote"))
-
-    # Criar um dicionário com o estoque atual para cada medicamento
-    estoque_dict = {item["medicamento__id"]: item["quantidade_em_estoque"] for item in estoques}
-
-    # Atualizar os detalhes com a quantidade total em estoque
+    # Adicionar flag de vencimento próximo
     for item in detalhes_medicamentos:
-        
-        item["quantidade_em_estoque"] = estoque_dict.get(item["medicamento__id"], 0)
-        item["vencimento_proximo"] = item["validade"] and item["validade"] <= now_plus_3_months
+        validade = item.get("validade")
+        item["vencimento_proximo"] = validade and validade <= now_plus_3_months
 
-
-    # Remover medicamentos com estoque zerado
-    detalhes_medicamentos = [item for item in detalhes_medicamentos if item["quantidade_em_estoque"] > 0]
+    # Filtrar medicamentos com estoque > 0
+    detalhes_medicamentos = [
+        item for item in detalhes_medicamentos if item["quantidade_em_estoque"] > 0
+    ]
 
     # Cálculo do valor total do estoque
     total_valor_geral = sum(item["total_valor"] or 0 for item in detalhes_medicamentos)
@@ -111,6 +111,7 @@ def lista_medicamentos(request):
             "total_valor_geral": total_valor_geral,
         },
     )
+
 
 
 
@@ -635,78 +636,51 @@ def get_lotes(request, medicamento_id):
     return JsonResponse({"lotes": list(lotes)})
 
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
 from django.contrib import messages
-from .models import DetalhesMedicamento, DistribuicaoMedicamento
-from .forms import DistribuicaoMedicamentoForm
+from .forms import DistribuicaoForm, DistribuicaoMedicamentoFormSet
+from .models import Distribuicao
 
-@login_required
 def distribuicao_sem_requisicao(request):
-    user_profile = request.user.profile
-    estabelecimento_origem = user_profile.estabelecimento
+    estabelecimento_origem = request.user.profile.estabelecimento  # Assumindo que o user tem um perfil
 
-    if not estabelecimento_origem:
-        messages.error(request, "Você não está associado a nenhum estabelecimento.")
-        return redirect('dashboard')
+    if request.method == 'POST':
+        print("📩 Dados recebidos no POST:", request.POST)  # <-- Aqui!
+        distrib_form = DistribuicaoForm(request.POST, estabelecimento_origem=estabelecimento_origem)
+        
+        formset = DistribuicaoMedicamentoFormSet(request.POST, queryset=Distribuicao.objects.all())  
 
-    if request.method == "POST":
-        form = DistribuicaoMedicamentoForm(request.POST, estabelecimento_origem=estabelecimento_origem)
-        if form.is_valid():
-            # Dados do formulário
-            medicamento = form.cleaned_data['medicamento']
-            lote = form.cleaned_data['lote']
-            quantidade = form.cleaned_data['quantidade']
-            estabelecimento_destino = form.cleaned_data['estabelecimento_destino']
 
-            # Verificar estoque no estabelecimento de origem
-            detalhes_medicamento = get_object_or_404(
-                DetalhesMedicamento,
-                medicamento=medicamento,
-                lote=lote.lote,
-                estabelecimento=estabelecimento_origem
-            )
+        print("📩 distrib_form.errors:", distrib_form.errors)  
+        print("📩 formset.errors:", formset.errors)  
 
-            if detalhes_medicamento.quantidade < quantidade:
-                messages.error(request, "Quantidade insuficiente no estoque.")
-                return redirect('distribuicao_sem_requisicao')
+    if distrib_form.is_valid() and formset.is_valid():
+    # O formulário e o formset são válidos
+        distribuicao = distrib_form.save(commit=False)
+        distribuicao.estabelecimento_origem = estabelecimento_origem
+        distribuicao.save()
 
-            # Atualizar o estoque no estabelecimento de origem
-            detalhes_medicamento.quantidade -= quantidade
-            detalhes_medicamento.save()
+        medicamentos = formset.save(commit=False)
+        for medicamento in medicamentos:
+            medicamento.distribuicao = distribuicao
+            medicamento.save()
 
-            # Atualizar ou criar o estoque no estabelecimento de destino
-            detalhes_destino, created = DetalhesMedicamento.objects.get_or_create(
-                medicamento=medicamento,
-                lote=lote.lote,
-                estabelecimento=estabelecimento_destino,
-                defaults={
-                    'quantidade': 0,
-                    'validade': lote.validade,
-                    'localizacao': lote.localizacao,
-                    'fabricante': lote.fabricante,
-                    'valor': lote.valor,
-                }
-            )
-            detalhes_destino.quantidade += quantidade
-            detalhes_destino.save()
+        print("📩 Dados recebidos no POST:", request.POST)
+        messages.success(request, "Distribuição registrada com sucesso!")
+        print("Distribuição registrada com sucesso!")
+        return redirect('estoque')
 
-            # Registrar a distribuição
-            DistribuicaoMedicamento.objects.create(
-                
-                
-                medicamento=medicamento,
-                lote=detalhes_medicamento,
-                quantidade=quantidade,
-               
-            )
-
-            messages.success(request, "Distribuição realizada com sucesso!")
-            return redirect('estoque')
     else:
-        form = DistribuicaoMedicamentoForm(estabelecimento_origem=estabelecimento_origem)
+        print("⚠️ ERRO NO FORMULÁRIO ⚠️")
+        print("Erros no distrib_form:", distrib_form.errors)
+        print("Erros no formset:", formset.errors)
 
-    return render(request, 'estoque/distribuicao_sem_requisicao.html', {'form': form})
+    
+ 
+    return render(request, 'estoque/distribuicao_sem_requisicao.html', {
+        'distrib_form': distrib_form,
+        'formset': formset,
+    })
 
 
 

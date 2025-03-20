@@ -3,13 +3,15 @@
 {% block content %}
 <div class="container">
     <h2 class="mt-4">Distribuição Sem Requisição</h2>
-    <form method="post">
+    <form method="POST" action="{% url 'distribuicao_sem_requisicao' %}">
+
         {% csrf_token %}
         
         {{ distrib_form.as_p }}
     
         <h2>Medicamentos</h2>
         {{ formset.management_form }}
+       
     
         <table class="table table-bordered">
             <thead>
@@ -29,12 +31,13 @@
                 {% endfor %}
             </tbody>
             {% if messages %}
-            {% for message in messages %}
-                <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-                    {{ message }}
+                <div class="alert alert-success">
+                    {% for message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
                 </div>
-            {% endfor %}
             {% endif %}
+
 
         </table>
     
