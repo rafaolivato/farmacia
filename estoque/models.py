@@ -322,38 +322,23 @@ class Distribuicao(models.Model):
 
 
 class DistribuicaoMedicamento(models.Model):
-    
-    
     distribuicao = models.ForeignKey(Distribuicao, on_delete=models.CASCADE, related_name='medicamentos')
-    medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE)
-    
-    lote = models.ForeignKey(
-        DetalhesMedicamento,
-        on_delete=models.CASCADE,
-        related_name='distribuicoes_por_lote'  # Nome único para o relacionamento reverso
-    )
-    validade = models.ForeignKey(
-        
-        DetalhesMedicamento,
-        on_delete=models.CASCADE,
-        related_name='distribuicoes_por_validade'  # Nome único para o relacionamento reverso
-    )
     medicamento = models.ForeignKey('Medicamento', on_delete=models.CASCADE)
     lote = models.ForeignKey('DetalhesMedicamento', on_delete=models.CASCADE)
     quantidade = models.PositiveIntegerField()
-   
-    
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
 
-        # Deduzir do estoque do estabelecimento de origem
-        estoque_origem = Estoque.objects.get(
+    def save(self, *args, **kwargs):
+        # Verifica se há estoque suficiente no estabelecimento de origem
+        estoque_origem = Estoque.objects.filter(
             estabelecimento=self.distribuicao.estabelecimento_origem,
-            medicamento=self.medicamento
-        )
-        if estoque_origem.quantidade < self.quantidade:
+            medicamento=self.medicamento,
+            detalhesmedicamento=self.lote
+        ).first()
+
+        if not estoque_origem or estoque_origem.quantidade < self.quantidade:
             raise ValueError("Estoque insuficiente no estabelecimento de origem.")
 
+        # Deduzir do estoque do estabelecimento de origem
         estoque_origem.quantidade -= self.quantidade
         estoque_origem.save()
 
@@ -361,10 +346,14 @@ class DistribuicaoMedicamento(models.Model):
         estoque_destino, created = Estoque.objects.get_or_create(
             estabelecimento=self.distribuicao.estabelecimento_destino,
             medicamento=self.medicamento,
+            detalhesmedicamento=self.lote,
             defaults={'quantidade': 0}
         )
         estoque_destino.quantidade += self.quantidade
         estoque_destino.save()
+
+        super().save(*args, **kwargs)
+
 
 from django.db import models, transaction
 from django.contrib.auth.models import User

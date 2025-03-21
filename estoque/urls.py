@@ -6,7 +6,7 @@ from .views import saida_estoque,sucesso
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
 from .views import criar_requisicao, listar_requisicoes, responder_requisicao
-from .views import medicamentos_por_estabelecimento, confirmar_requisicao, receber_requisicoes, entrada_estoque, distribuicao_sem_requisicao
+from .views import medicamentos_por_estabelecimento, confirmar_requisicao, receber_requisicoes, entrada_estoque, distribuir_medicamento
 
 
 urlpatterns = [
@@ -38,8 +38,7 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),  
     path('saida_estoque/', views.saida_estoque, name='saida_estoque'),
     path('estoque/dispensacoes/<int:id>/', views.detalhes_dispensacao, name='detalhes_dispensacao'),
-    path('distribuicao_sem_requisicao/', views.distribuicao_sem_requisicao, name='distribuicao_sem_requisicao'),
-    path('distribuicao/lista/', views.lista_distribuicoes, name='lista_distribuicoes'),
+    path('distribuir_medicamento/', distribuir_medicamento, name='distribuir_medicamento'),
     path('password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),

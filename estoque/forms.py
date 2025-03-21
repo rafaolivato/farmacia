@@ -188,62 +188,58 @@ DispensacaoMedicamentoFormSet = forms.inlineformset_factory(
 class UploadExcelForm(forms.Form):
     excel_file = forms.FileField(label='Selecione um arquivo Excel')
 
-
-
 from django import forms
-from .models import Distribuicao, Estabelecimento
+from django.forms import inlineformset_factory
+from .models import Distribuicao, DistribuicaoMedicamento, DetalhesMedicamento, Medicamento
 
 class DistribuicaoForm(forms.ModelForm):
-   
     class Meta:
         model = Distribuicao
         fields = ['estabelecimento_destino']
         widgets = {
+            
             'estabelecimento_destino': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class DistribuicaoMedicamentoForm(forms.ModelForm):
+    # Estabelecimento de origem: deve ser fixo e não editável
+    estabelecimento_origem = forms.ModelChoiceField(queryset=Estabelecimento.objects.all(), required=False, widget=forms.HiddenInput())
+
+    # Estabelecimento de destino: o usuário pode selecionar, mas não o mesmo de origem
+    estabelecimento_destino = forms.ModelChoiceField(queryset=Estabelecimento.objects.all(), required=True, label="Estabelecimento Destino")
+
+    class Meta:
+        model = DistribuicaoMedicamento
+        fields = ['estabelecimento_destino', 'medicamento', 'lote', 'quantidade']
+        widgets = {
+            'medicamento': forms.Select(attrs={'class': 'form-select', 'onchange': 'atualizarLotes(this)'}),
+            'lote': forms.Select(attrs={'class': 'form-select'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, estabelecimento_origem=None, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Atribui o estabelecimento_origem se passado como argumento
         if estabelecimento_origem:
-            # Excluir o estabelecimento de origem da queryset
+            self.fields['estabelecimento_origem'].initial = estabelecimento_origem
+            self.fields['estabelecimento_origem'].widget = forms.HiddenInput()  # Deixa o campo oculto no formulário
+
+            # Filtra o queryset do estabelecimento_destino para excluir o estabelecimento de origem
             self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.exclude(id=estabelecimento_origem.id)
         else:
-            # Se não houver estabelecimento de origem, mantém a queryset vazia
-            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.none()
+            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.all()
+            self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
 
 
-from django import forms
-from django.forms import formset_factory
-from .models import DistribuicaoMedicamento, Medicamento, DetalhesMedicamento, Estabelecimento
 
-class DistribuicaoMedicamentoForm(forms.ModelForm):
-    class Meta:
-        model = DistribuicaoMedicamento
-        fields = ['medicamento', 'lote', 'quantidade']
-
-    def __init__(self, *args, estabelecimento_origem=None, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        if estabelecimento_origem:
-            # Filtrar apenas medicamentos disponíveis no estoque do estabelecimento logado
-            self.fields['medicamento'].queryset = Medicamento.objects.filter(
-                detalhesmedicamento__estabelecimento=estabelecimento_origem,
-                detalhesmedicamento__quantidade__gt=0
-            ).distinct()
-
-            # Filtrar apenas os lotes disponíveis no estoque do estabelecimento logado
-            self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
-                estabelecimento=estabelecimento_origem,
-                quantidade__gt=0
-            )
-
-# Criar um formset baseado no ModelForm acima
-DistribuicaoMedicamentoFormSet = forms.modelformset_factory(
-    DistribuicaoMedicamento,
-    form=DistribuicaoMedicamentoForm,
-    extra=1,  # Número de formulários extras
-    can_delete=True  # Permitir excluir um item
+DistribuicaoMedicamentoFormSet = modelformset_factory(
+    DistribuicaoMedicamento, form=DistribuicaoMedicamentoForm, extra=1
 )
+
+
+
 
 
 
@@ -286,60 +282,6 @@ class SaidaEstoqueForm(forms.ModelForm):
                 self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
         else:
             self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
-
-
-
-from django import forms
-from .models import Distribuicao, DistribuicaoMedicamento
-
-class DistribuicaoForm(forms.ModelForm):
-    class Meta:
-        model = Distribuicao
-        fields = ['estabelecimento_destino']
-        widgets = {
-            'estabelecimento_destino': forms.Select(attrs={'class': 'form-control'}),
-        }
-    def __init__(self, *args, **kwargs):
-        user_estabelecimento = kwargs.pop('user_estabelecimento', None)
-        super().__init__(*args, **kwargs)
-        if user_estabelecimento:
-            # Exclui o próprio estabelecimento do campo 'estabelecimento_destino'
-            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.exclude(
-                id=user_estabelecimento.id
-            )
-
-from django import forms
-from .models import DistribuicaoMedicamento, Medicamento, Estoque
-
-class DistribuicaoMedicamentoForm(forms.ModelForm):
-    class Meta:
-        model = DistribuicaoMedicamento
-        fields = ['medicamento', 'lote', 'quantidade']
-        widgets = {
-            'medicamento': forms.Select(attrs={'class': 'form-control', 'id': 'id_medicamento'}),
-            'lote': forms.Select(attrs={'class': 'form-control', 'id': 'id_lote'}),
-            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
-            
-        }
-    def __init__(self, *args, **kwargs):
-        distrib = kwargs.pop('distrib', None)
-        super().__init__(*args, **kwargs)
-
-        self.fields['lote'].queryset = Estoque.objects.none()  # Inicialmente vazio
-
-        if distrib and distrib.estabelecimento_origem:
-            self.fields['medicamento'].queryset = Medicamento.objects.filter(
-                estoques_medicamento__estabelecimento=distrib.estabelecimento_origem,
-                estoques_medicamento__quantidade__gt=0
-            ).distinct()
-
-        if self.instance.pk and self.instance.medicamento:
-            self.fields['lote'].queryset = Estoque.objects.filter(
-                medicamento=self.instance.medicamento,
-                estabelecimento=distrib.estabelecimento_origem,
-                quantidade__gt=0
-            )
-
 
 from django import forms
 from django.forms import inlineformset_factory

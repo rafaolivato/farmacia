@@ -7,7 +7,7 @@ from django.views.generic import RedirectView
 from django.contrib.auth import views as auth_views
 from estoque import views as estoque_views  # Importe suas views
 from estoque.views import lotes_por_medicamento,medicamentos_por_estabelecimento
-from estoque.views import criar_requisicao, listar_requisicoes, responder_requisicao,distribuicao_sem_requisicao
+from estoque.views import criar_requisicao, listar_requisicoes, responder_requisicao,distribuir_medicamento
 
 
 urlpatterns = [

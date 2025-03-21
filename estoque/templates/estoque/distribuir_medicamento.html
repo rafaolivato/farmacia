@@ -1,0 +1,69 @@
+{% extends 'estoque/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Distribuir Medicamentos</h2>
+    <form method="POST">
+        {% csrf_token %}
+               
+        <div class="form-group">
+            {{ form.estabelecimento_destino }}
+        </div>
+
+        <h4>Medicamentos</h4>
+        <div id="formset-container">
+            {{ formset.management_form }}
+            {% for form in formset %}
+                <div class="formset-item">
+                    {{ form.as_p }}
+                    <button type="button" class="btn btn-danger remove-form">Remover</button>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <button type="button" id="add-form" class="btn btn-secondary">Adicionar Medicamento</button>
+        <button type="submit" class="btn btn-primary">Transferir</button>
+    </form>
+</div>
+
+<script>
+// Script para adicionar/remover formulários dinamicamente no formset
+document.addEventListener('DOMContentLoaded', function () {
+    let formsetContainer = document.getElementById('formset-container');
+    let addFormButton = document.getElementById('add-form');
+    let totalForms = document.querySelector('#id_medicamentos-TOTAL_FORMS');
+
+    addFormButton.addEventListener('click', function () {
+        let formNum = Number(totalForms.value);
+        let newForm = formsetContainer.firstElementChild.cloneNode(true);
+        newForm.innerHTML = newForm.innerHTML.replace(/-0-/g, `-${formNum}-`);
+        formsetContainer.appendChild(newForm);
+        totalForms.value = formNum + 1;
+    });
+
+    document.addEventListener('click', function (event) {
+        if (event.target.classList.contains('remove-form')) {
+            event.target.closest('.formset-item').remove();
+        }
+    });
+});
+
+function atualizarLotes(select) {
+    let medicamentoId = select.value;
+    let loteField = select.closest('.formset-item').querySelector('[name$="-lote"]');
+    
+    fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
+        .then(response => response.json())
+        .then(data => {
+            loteField.innerHTML = '<option value="">Selecione um lote</option>';
+            data.forEach(lote => {
+                let option = document.createElement('option');
+                option.value = lote.id;
+                option.textContent = `${lote.codigo} - ${lote.quantidade} disponíveis`;
+                loteField.appendChild(option);
+            });
+        });
+}
+</script>
+
+{% endblock %}
