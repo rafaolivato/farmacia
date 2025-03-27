@@ -60,7 +60,6 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
-from .models import DetalhesMedicamento, Estoque
 
 @login_required
 def lista_medicamentos(request):
@@ -69,10 +68,11 @@ def lista_medicamentos(request):
 
     estabelecimento = request.user.profile.estabelecimento
 
-    # Buscar detalhes dos medicamentos, agrupando por medicamento e lote
+    # Buscar detalhes dos medicamentos agrupando por lote e validade
     detalhes_medicamentos = list(
         DetalhesMedicamento.objects.filter(
-            estoque__estabelecimento=estabelecimento
+            estoque__estabelecimento=estabelecimento,  # Filtra apenas do estoque do estabelecimento
+            quantidade__gt=0  # Garante que só pegue itens com estoque disponível
         )
         .values(
             "medicamento__id",
@@ -83,10 +83,10 @@ def lista_medicamentos(request):
             "fabricante",
         )
         .annotate(
-            quantidade_em_estoque=Sum("quantidade"),  # Quantidade específica por lote
-            total_valor=Sum(F("quantidade") * F("valor")),
+            quantidade_em_estoque=Sum("quantidade"),  # Mantém a separação por lote e estoque atualizado
+            total_valor=Sum(F("quantidade") * F("valor")),  # Calcula o valor atualizado
         )
-        .order_by("medicamento__nome", "lote")
+        .order_by("medicamento__nome", "validade", "lote")  # Ordenação correta
     )
 
     # Adicionar flag de vencimento próximo
@@ -94,7 +94,7 @@ def lista_medicamentos(request):
         validade = item.get("validade")
         item["vencimento_proximo"] = validade and validade <= now_plus_3_months
 
-    # Filtrar medicamentos com estoque > 0
+    # Remover medicamentos sem estoque
     detalhes_medicamentos = [
         item for item in detalhes_medicamentos if item["quantidade_em_estoque"] > 0
     ]
@@ -107,11 +107,9 @@ def lista_medicamentos(request):
         "estoque/lista_medicamentos.html",
         {
             "detalhes_medicamentos": detalhes_medicamentos,
-            "now_plus_3_months": now_plus_3_months,
             "total_valor_geral": total_valor_geral,
         },
     )
-
 
 
 
@@ -639,7 +637,7 @@ def get_lotes(request, medicamento_id):
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import transaction
-from .models import Distribuicao, Profile, DistribuicaoMedicamento, Estabelecimento
+from .models import Distribuicao, DistribuicaoMedicamento, Estoque
 from .forms import DistribuicaoForm, DistribuicaoMedicamentoFormSet
 from django.contrib.auth.decorators import login_required
 
@@ -654,7 +652,7 @@ def distribuir_medicamento(request):
         )
 
         if form.is_valid() and formset.is_valid():
-            with transaction.atomic():
+            with transaction.atomic():  # Garante que todas as operações sejam atômicas
                 distribuicao = form.save(commit=False)
                 distribuicao.estabelecimento_origem = user_estabelecimento
                 distribuicao.save()
@@ -667,8 +665,35 @@ def distribuir_medicamento(request):
                     if medicamento.lote:
                         medicamento.validade = medicamento.lote.validade
 
+                        # 🚨 Verifica se há estoque suficiente no lote
+                        if medicamento.lote.quantidade < medicamento.quantidade:
+                            messages.error(request, f"Estoque insuficiente para {medicamento.medicamento}.")
+                            return redirect('distribuir_medicamento')
+
+                        # ✅ Atualiza a quantidade do lote
+                        medicamento.lote.quantidade -= medicamento.quantidade
+                        medicamento.lote.save()
+
+                        # ✅ Atualiza o estoque do estabelecimento de origem
+                        try:
+                            estoque_origem = Estoque.objects.get(
+                                estabelecimento=user_estabelecimento,
+                                medicamento=medicamento.medicamento
+                            )
+
+                            if estoque_origem.quantidade < medicamento.quantidade:
+                                messages.error(request, f"Estoque insuficiente de {medicamento.medicamento} no estabelecimento.")
+                                return redirect('distribuir_medicamento')
+
+                            estoque_origem.quantidade -= medicamento.quantidade
+                            estoque_origem.save()
+
+                        except Estoque.DoesNotExist:
+                            messages.error(request, f"Estoque de {medicamento.medicamento} não encontrado no estabelecimento.")
+                            return redirect('distribuir_medicamento')
+
                     medicamento.save()
-            
+
             messages.success(request, "Distribuição realizada com sucesso!")
             return redirect('sucesso')
 
@@ -683,6 +708,8 @@ def distribuir_medicamento(request):
         'form': form,
         'formset': formset,
     })
+
+
 
 
 
