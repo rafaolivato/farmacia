@@ -192,26 +192,33 @@ from django import forms
 from django.forms import inlineformset_factory
 from .models import Distribuicao, DistribuicaoMedicamento, DetalhesMedicamento, Medicamento
 
+from django import forms
+from .models import Distribuicao, Estabelecimento, Estoque
+
 class DistribuicaoForm(forms.ModelForm):
     class Meta:
         model = Distribuicao
         fields = ['estabelecimento_destino']
         widgets = {
-            
             'estabelecimento_destino': forms.Select(attrs={'class': 'form-select'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)  # Obtém o usuário passado pela view
+        super().__init__(*args, **kwargs)
+
+        if user and hasattr(user, 'profile') and user.profile.estabelecimento:
+            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.exclude(
+                id=user.profile.estabelecimento.id
+            )
 
 class DistribuicaoMedicamentoForm(forms.ModelForm):
     # Estabelecimento de origem: deve ser fixo e não editável
     estabelecimento_origem = forms.ModelChoiceField(queryset=Estabelecimento.objects.all(), required=False, widget=forms.HiddenInput())
 
-    # Estabelecimento de destino: o usuário pode selecionar, mas não o mesmo de origem
-    estabelecimento_destino = forms.ModelChoiceField(queryset=Estabelecimento.objects.all(), required=True, label="Estabelecimento Destino")
-
     class Meta:
         model = DistribuicaoMedicamento
-        fields = ['estabelecimento_destino', 'medicamento', 'lote', 'quantidade']
+        fields = ['medicamento', 'lote', 'quantidade']
         widgets = {
             'medicamento': forms.Select(attrs={'class': 'form-select', 'onchange': 'atualizarLotes(this)'}),
             'lote': forms.Select(attrs={'class': 'form-select'}),
@@ -225,12 +232,34 @@ class DistribuicaoMedicamentoForm(forms.ModelForm):
         if estabelecimento_origem:
             self.fields['estabelecimento_origem'].initial = estabelecimento_origem
             self.fields['estabelecimento_origem'].widget = forms.HiddenInput()  # Deixa o campo oculto no formulário
+            
+            medicamentos_com_estoque = Estoque.objects.filter(
+                estabelecimento=estabelecimento_origem
+            ).values_list('medicamento', flat=True)
+            
+            self.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_com_estoque)
 
-            # Filtra o queryset do estabelecimento_destino para excluir o estabelecimento de origem
-            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.exclude(id=estabelecimento_origem.id)
-        else:
-            self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.all()
-            self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+        def __init__(self, *args, estabelecimento_origem=None, **kwargs):
+            super().__init__(*args, **kwargs)
+        
+        if estabelecimento_origem:
+            # Filtra os medicamentos disponíveis no estoque do estabelecimento
+            medicamentos_com_estoque = Estoque.objects.filter(
+                estabelecimento=estabelecimento_origem
+            ).values_list('medicamento', flat=True)
+            
+            self.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_com_estoque)
+            
+            
+
+    def clean(self):
+        cleaned_data = super().clean()
+        lote = cleaned_data.get('lote')
+        
+        if lote:
+            cleaned_data['validade'] = lote.validade  # Associa a validade do lote automaticamente
+        
+        return cleaned_data
 
 
 

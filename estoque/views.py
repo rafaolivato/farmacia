@@ -639,34 +639,52 @@ def get_lotes(request, medicamento_id):
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import transaction
-from .models import Distribuicao,Profile,DistribuicaoMedicamento
+from .models import Distribuicao, Profile, DistribuicaoMedicamento, Estabelecimento
 from .forms import DistribuicaoForm, DistribuicaoMedicamentoFormSet
 from django.contrib.auth.decorators import login_required
 
 @login_required
 def distribuir_medicamento(request):
-    # Obtém o estabelecimento associado ao usuário logado
-    estabelecimento_origem = request.user.profile.estabelecimento
+    user_estabelecimento = request.user.profile.estabelecimento  # Obtém o estabelecimento do usuário
 
     if request.method == 'POST':
-        form = DistribuicaoForm(request.POST)
-        formset = DistribuicaoMedicamentoFormSet(request.POST)
+        form = DistribuicaoForm(request.POST, user=request.user)
+        formset = DistribuicaoMedicamentoFormSet(
+            request.POST, form_kwargs={'estabelecimento_origem': user_estabelecimento}
+        )
 
         if form.is_valid() and formset.is_valid():
-            # Processar os dados
-            pass
-    else:
-        form = DistribuicaoForm()
-        formset = DistribuicaoMedicamentoFormSet(queryset=DistribuicaoMedicamento.objects.none())
+            with transaction.atomic():
+                distribuicao = form.save(commit=False)
+                distribuicao.estabelecimento_origem = user_estabelecimento
+                distribuicao.save()
 
-    # Passa o 'estabelecimento_origem' para cada formulário no FormSet
-    for form in formset:
-        form.fields['estabelecimento_origem'].initial = estabelecimento_origem
+                for item_form in formset:
+                    medicamento = item_form.save(commit=False)
+                    medicamento.distribuicao = distribuicao
+                    
+                    # Verifica e atribui a validade do lote antes de salvar
+                    if medicamento.lote:
+                        medicamento.validade = medicamento.lote.validade
+
+                    medicamento.save()
+            
+            messages.success(request, "Distribuição realizada com sucesso!")
+            return redirect('sucesso')
+
+    else:
+        form = DistribuicaoForm(user=request.user)
+        formset = DistribuicaoMedicamentoFormSet(
+            queryset=DistribuicaoMedicamento.objects.none(),
+            form_kwargs={'estabelecimento_origem': user_estabelecimento}
+        )
 
     return render(request, 'estoque/distribuir_medicamento.html', {
         'form': form,
         'formset': formset,
     })
+
+
 
 
 from django.shortcuts import render, redirect
