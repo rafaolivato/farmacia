@@ -1,30 +1,48 @@
 {% extends 'estoque/base.html' %}
+{% load static %}
+{% load widget_tweaks %}  <!-- Carrega o template tag para adicionar classes aos widgets -->
+
+
 
 {% block title %}Cadastro de Fornecedor{% endblock %}
 
 {% block content %}
   <div class="container mt-5">
-    <h2>Cadastro de Fornecedor</h2>
-    <form method="post">
-      {% csrf_token %}
-      <div class="form-group">
-        <label for="id_nome">Nome:</label>
-        {{ form.nome }}
+    <div class="card shadow-lg">
+      <div class="card-header bg-primary text-white">
+        <h2 class="mb-0 text-center">Cadastro de Fornecedor</h2>
       </div>
-      <div class="form-group">
-        <label for="id_nome_fantasia">Nome Fantasia:</label>
-        {{ form.nome_fantasia }}
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label for="id_nome" class="form-label">Nome:</label>
+              {{ form.nome |add_class:"form-control" }}
+            </div>
+            <div class="col-md-12 mb-3">
+              <label for="id_nome_fantasia" class="form-label">Nome Fantasia:</label>
+              {{ form.nome_fantasia |add_class:"form-control" }}
+            </div>
+                   
+            <div class="col-md-12 mb-3">
+              <label for="id_cnpj" class="form-label">CNPJ:</label>
+              {{ form.cnpj |add_class:"form-control" }}
+            </div>
+            <div class="col-md-12 mb-3">
+              <label for="id_telefone" class="form-label">Telefone:</label>
+              {{ form.telefone|add_class:"form-control" }}
+            </div>
+          </div>
+
+          <div class="text-center mt-3">
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="{% url 'entrada_estoque' %}" class="btn btn-secondary">Voltar</a>
+          </div>
+        </form>
       </div>
-      <div class="form-group">
-        <label for="id_cnpj">CNPJ:</label>
-        {{ form.cnpj }}
-      </div>
-      <div class="form-group">
-        <label for="id_telefone">Telefone:</label>
-        {{ form.telefone }}
-      </div>
-      <button type="submit" class="btn btn-primary">Salvar</button>
-      <a href="{% url 'entrada_estoque' %}" class="btn btn-secondary">Voltar</a>
-    </form>
+    </div>
   </div>
+
+  <script src="{% static 'js/fornecedor.js' %}"></script>
 {% endblock %}

@@ -8,23 +8,22 @@
     <table class="table table-striped">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Descrição</th>
-          <!-- Adicione mais colunas conforme necessário -->
+          <th>Nome</th>  <!-- Corrigido para refletir o dado exibido -->
         </tr>
       </thead>
       <tbody>
         {% for localizacao in localizacoes %}
           <tr>
-              <td>{{ localizacao.nome }}</td>
-          
-            <!-- Adicione mais campos conforme necessário -->
+            <td>{{ localizacao.nome }}</td>  <!-- Mantém a exibição do nome -->
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="1">Nenhuma localização cadastrada.</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
     <a href="{% url 'cadastrar_localizacao' %}" class="btn btn-primary">Cadastrar Nova Localização</a>
-    
   </div>
   <br>
 {% endblock %}

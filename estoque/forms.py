@@ -65,10 +65,21 @@ class MedicamentoForm(forms.ModelForm):
                 pass
 
 
+from django import forms
+from .models import Paciente
+
 class PacienteForm(forms.ModelForm):
     class Meta:
         model = Paciente
         fields = ["nome", "nome_mae", "cns", "cpf", "data_nascimento"]
+        widgets = {
+            "nome": forms.TextInput(attrs={"class": "form-control"}),
+            "nome_mae": forms.TextInput(attrs={"class": "form-control"}),
+            "cns": forms.TextInput(attrs={"class": "form-control"}),
+            "cpf": forms.TextInput(attrs={"class": "form-control"}),
+            "data_nascimento": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+        }
+
 
 class FornecedorForm(forms.ModelForm):
     class Meta:
