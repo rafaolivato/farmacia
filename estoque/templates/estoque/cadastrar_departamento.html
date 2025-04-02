@@ -3,14 +3,28 @@
 {% block title %}Cadastro de Departamento{% endblock %}
 
 {% block content %}
-  <div class="container mt-5">
-    <h2>Cadastro de Departamento</h2>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit" class="btn btn-primary">Salvar</button>
-      <a href="{% url 'entrada_estoque' %}" class="btn btn-secondary">Voltar</a>
-      <a href="{% url 'lista_departamento' %}" class="btn btn-info">Consultar Departamento</a>
-    </form>
+<div class="container mt-5">
+  <div class="card shadow-lg p-4">
+      <div class="card-header bg-primary text-white text-center">
+        <h2 class="mb-0">Cadastro de Departamento</h2>
+      </div>
+      <div class="card-body">
+        <form method="post" class="needs-validation" novalidate>
+          {% csrf_token %}
+          
+          <div class="mb-3">
+            <label for="id_nome" class="form-label">Nome:</label>
+            {{ form.nome }}
+          </div>
+          <div class="d-flex justify-content-center mt-4">
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="{% url 'entrada_estoque' %}" class="btn btn-secondary">Voltar</a>
+            <a href="{% url 'lista_departamento' %}" class="btn btn-info">Consultar Departamento</a>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
+  </div>
+   
 {% endblock %}

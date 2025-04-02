@@ -6,32 +6,40 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2>Cadastrar Estabelecimento</h2>
-    {% load form_tags %}
-    <form method="post" enctype="multipart/form-data">
+    <div class="card shadow-lg p-4">
+        <div class="card-header bg-primary text-white text-center">
+            <h2 class="mb-0">Cadastro de Estabelecimento</h2>
+        </div>
+        <div class="card-body">   
+  
+        {% load form_tags %}
+        <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <div class="form-group">
+        <div class="mb-3">
             <label for="id_nome">Nome</label>
             {{ form.nome|add_class:"form-control" }}
         </div>
-        <div class="form-group">
+        <div class="mb-3">
             <label for="id_codigo_cnes">Código CNES</label>
             {{ form.codigo_cnes|add_class:"form-control" }}
         </div>
-        <div class="form-group">
+        <div class="mb-3">
             <label for="id_farmaceutico_responsavel">Farmacêutico Responsável</label>
             {{ form.farmaceutico_responsavel|add_class:"form-control" }}
         </div>
-        <div class="form-group">
+        <div class="mb-3">
             <label for="id_imagem_logotipo">Imagem Logotipo</label>
             {{ form.imagem_logotipo|add_class:"form-control-file" }}
         </div>
-        <div class="form-group">
+        <div class="mb-3">
             <label for="id_tipo_estabelecimento">Tipo de Estabelecimento</label>
             {{ form.tipo_estabelecimento|add_class:"form-control" }}
         </div>
         <button type="submit" class="btn btn-primary">Salvar</button>
         <a href="{% url 'lista_estabelecimentos' %}" class="btn btn-secondary">Consultar</a>
     </form>
+</div>
+        </div>
+    </div>
 </div>
 {% endblock %}

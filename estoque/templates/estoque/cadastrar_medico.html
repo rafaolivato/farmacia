@@ -4,35 +4,38 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">Cadastro de Médico</h2>
-    <form method="post" class="form" id="medicoForm">
-        {% csrf_token %}
-        
-        <div class="form-group">
-            {{ form.nome_completo.label_tag }}
-            {{ form.nome_completo }}
-            {% for error in form.nome_completo.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
+    <div class="card shadow-lg p-4">
+        <div class="card-header bg-primary text-white text-center">
+            <h2 class="mb-0">Cadastro de Médico</h2>
         </div>
+        <div class="card-body">
+            <form method="post" class="needs-validation" novalidate id="medicoForm">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="id_nome_completo" class="form-label">Nome Completo:</label>
+                    {{ form.nome_completo }}
+                </div>
 
-        <div class="form-group">
-            {{ form.estado.label_tag }}
-            {{ form.estado }}
-            {% for error in form.estado.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
+                <div class="mb-3">
+                    <label for="id_estado" class="form-label">Estado:</label>
+                    {{ form.estado }}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_crm" class="form-label">CRM:</label>
+                    {{ form.crm }}
+                </div>
+
+                <div class="d-flex justify-content-center mt-4">
+                    <a href="{% url 'entrada_estoque' %}" class="btn btn-secondary">Voltar</a>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+
+
+            </form>
         </div>
-
-        <div class="form-group">
-            {{ form.crm.label_tag }}
-            {{ form.crm }}
-            {% for error in form.crm.errors %}
-                <div class="text-danger">{{ error }}</div>
-            {% endfor %}
-        </div>
-
-        <button type="submit" class="btn btn-primary">Cadastrar Médico</button>
-    </form>
+    </div>
 </div>
+
 {% endblock %}

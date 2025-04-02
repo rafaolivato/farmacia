@@ -10,24 +10,24 @@
   <div class="container mt-5">
     <div class="card shadow-lg">
       <div class="card-header bg-primary text-white">
-        <h2 class="mb-0 text-center">Cadastro de Fabricante</h2>
+        <h2 class="mb-0">Cadastro de Fabricante</h2>
       </div>
       <div class="card-body">
         <form method="post" class="needs-validation" novalidate>
           {% csrf_token %}
           <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="mb-3">
               <label for="id_nome" class="form-label">Nome:</label>
               {{ form.nome|add_class:"form-control" }}
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="mb-3">
               <label for="id_nome_fantasia" class="form-label">Nome Fantasia:</label>
               {{ form.nome_fantasia|add_class:"form-control" }}
             </div>
           </div>
 
           <div class="row">
-            <div class="col-md-6 mb-3">
+            <div class="mb-3">
               <label for="id_cnpj" class="form-label">CNPJ:</label>
               {{ form.cnpj|add_class:"form-control" }}
             </div>
@@ -42,5 +42,4 @@
     </div>
   </div>
 
-  <script src="{% static 'js/fabricante.js' %}"></script>
 {% endblock %}
