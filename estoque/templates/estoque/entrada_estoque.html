@@ -31,33 +31,36 @@
         
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const adicionarMedicamentoBtn = document.getElementById('adicionar-medicamento');
+            const adicionarMedicamentoBtn = document.getElementById('add-medicamento'); // Corrigido o ID
             const formsetContainer = document.getElementById('formset-container');
             const totalForms = document.getElementById('id_form-TOTAL_FORMS');
-
-            // Pegar um formulário existente para servir como modelo
-            const emptyForm = document.querySelector('.form-detalhe');
-            if (!emptyForm) {
-                console.error('Nenhum formulário base encontrado para clonagem.');
-                return;
-            }
-            const formTemplate = emptyForm.cloneNode(true); // Clona um formulário
-
-            // Limpar os valores do formulário clonado
-            formTemplate.querySelectorAll('input, select, textarea').forEach(field => {
-                field.value = '';  // Limpa os valores dos campos
-            });
-
+    
             adicionarMedicamentoBtn.addEventListener('click', function() {
                 const formCount = parseInt(totalForms.value);
-
-                // Criar um novo formulário baseado no modelo
-                const newForm = formTemplate.cloneNode(true);
-                newForm.innerHTML = newForm.innerHTML.replace(/form-(\d+)/g, `form-${formCount}`);
-
-                formsetContainer.appendChild(newForm);
-                totalForms.value = formCount + 1;  // Atualizar a contagem de formulários
+                const emptyFormHtml = document.querySelector('.form-detalhe').outerHTML; // Pega o HTML do primeiro formulário
+    
+                // Substitui os índices do formset (form-0, form-1, etc.)
+                const newFormHtml = emptyFormHtml.replace(/form-(\d+)/g, `form-${formCount}`);
+    
+                // Criar um elemento div e definir o innerHTML corretamente
+                const newFormDiv = document.createElement('div');
+                newFormDiv.classList.add('form-detalhe');
+                newFormDiv.innerHTML = newFormHtml;
+    
+                // Limpa os valores dos campos para evitar duplicação de dados
+                newFormDiv.querySelectorAll('input, select, textarea').forEach(field => {
+                    if (field.type !== 'hidden') {
+                        field.value = '';
+                    }
+                });
+    
+                // Adiciona o novo formulário ao container
+                formsetContainer.appendChild(newFormDiv);
+    
+                // Atualiza o contador total de formulários
+                totalForms.value = formCount + 1;
             });
         });
     </script>
+    
 {% endblock %}
