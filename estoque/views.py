@@ -418,7 +418,7 @@ def nova_dispensacao(request):
                 dispensacao.usuario = usuario  # Registra o usuário que fez a dispensação
                 dispensacao.save()
                 
-                medicamentos = formset.save(commit=False)
+                medicamentos = formset.save(commit=False)  # Salva os medicamentos sem persistir no banco ainda
 
                 for medicamento in medicamentos:
                     medicamento.dispensacao = dispensacao
@@ -475,7 +475,7 @@ def nova_dispensacao(request):
                         # DEBUG: Exibir informações sobre o lote após a alteração
                         print(f"Depois da atualização do lote: {lote.medicamento.nome} - Lote: {lote.lote} - Quantidade: {lote.quantidade}")
 
-                    medicamento.save()  # Salva a dispensação após a atualização do estoque
+                    
 
                 messages.success(request, "Dispensação registrada e estoque atualizado com sucesso!")
                 return redirect("listar_dispensacoes")

@@ -26,6 +26,8 @@
                     <td>{{ form.medicamento }}</td>
                     <td>{{ form.quantidade }}</td>
                     <td>
+                        <input type="hidden" name="{{ form.prefix }}-lote" class="lote-selecionado" id="id_{{ form.prefix }}-lote">
+                        <span class="lote-texto">Nenhum lote selecionado</span>
                         <button type="button" class="btn btn-info btn-sm select-lote">Selecionar Lote</button>
                         <button type="button" class="btn btn-danger btn-sm remove-form-row">Remover</button>
                     </td>
@@ -119,7 +121,8 @@
                     <input type="number" name="${formsetPrefix}-${formCount}-quantidade" class="form-control" id="id_${formsetPrefix}-${formCount}-quantidade">
                 </td>
                 <td>
-                    <button type="button" class="btn btn-danger remove-form-row">Remover</button>
+                    <button type="button" class="btn btn-info btn-sm select-lote">Selecionar Lote</button>
+                    <button type="button" class="btn btn-danger btn-sm remove-form-row">Remover</button>
                 </td>
             </tr>`;
 
@@ -146,7 +149,50 @@
         });
     });
 
-
+    document.addEventListener('DOMContentLoaded', function () {
+        
+        document.querySelector('#medicamentos-table tbody').addEventListener('click', function (event) {
+            if (event.target.classList.contains('select-lote')) {
+                const row = event.target.closest('tr');
+                const selectMedicamento = row.querySelector('select[name*="medicamento"]');
+                const loteCampo = row.querySelector('.lote-selecionado');
+                const loteTexto = row.querySelector('.lote-texto');
+    
+                if (!selectMedicamento || !selectMedicamento.value) {
+                    alert("Por favor, selecione um medicamento antes de escolher um lote.");
+                    return;
+                }
+    
+                const medicamentoId = selectMedicamento.value;
+    
+                fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length === 0) {
+                            alert("Nenhum lote disponível para este medicamento.");
+                            return;
+                        }
+    
+                        let loteSelecionado = prompt("Escolha um lote:\n" + data.map((lote, index) => `${index + 1}. ${lote.codigo} (Qtd: ${lote.quantidade})`).join("\n"));
+    
+                        if (loteSelecionado) {
+                            loteSelecionado = parseInt(loteSelecionado) - 1;
+                            if (loteSelecionado >= 0 && loteSelecionado < data.length) {
+                                loteCampo.value = data[loteSelecionado].id;
+                                loteTexto.textContent = `Lote: ${data[loteSelecionado].codigo}`;
+                            } else {
+                                alert("Seleção inválida.");
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Erro ao buscar lotes:", error);
+                        alert("Erro ao buscar lotes para o medicamento selecionado.");
+                    });
+            }
+        });
+    });
+    
 </script>
 
 {% endblock %}
