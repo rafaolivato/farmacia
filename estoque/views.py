@@ -507,8 +507,6 @@ def nova_dispensacao(request):
         },
     )
 
-
-
 def detalhes_dispensacao(request, id):
     dispensacao = Dispensacao.objects.get(id=id)
     dispensacoes_recentes = Dispensacao.objects.order_by("-data_dispensacao")[:5]
@@ -564,64 +562,75 @@ def lotes_por_medicamento(request, medicamento_id):
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .forms import SaidaEstoqueForm
-from .models import DetalhesMedicamento, Estoque
+from .forms import SaidaEstoqueForm, ItemRequisicaoForm, ItemSaidaForm
+from .models import DetalhesMedicamento, Estoque, ItemSaida
 from django.utils.timezone import now
-
 from django.db import transaction
+from django.forms import modelformset_factory
 
 @login_required
 def saida_estoque(request):
+    
+    ItemSaidaFormSet = modelformset_factory(ItemSaida, form=ItemSaidaForm, extra=1, can_delete=True)
+
     if request.method == 'POST':
         form = SaidaEstoqueForm(request.POST, user=request.user)
-        if form.is_valid():
-            with transaction.atomic():  # Garante que todas as operações sejam atômicas
+        formset = ItemSaidaFormSet(request.POST, queryset=ItemSaida.objects.none())
+
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
                 saida = form.save(commit=False)
-                saida.data_atendimento = now()  # Define a data/hora atual
+                saida.data_atendimento = now()
                 saida.user = request.user.username
+                saida.save()
 
-                lote = saida.lote
+                for item_form in formset:
+                    item = item_form.save(commit=False)
+                    item.saida = saida
 
-                # Verificar se o lote pertence ao estabelecimento do usuário
-                if lote.estabelecimento != request.user.profile.estabelecimento:
-                    messages.error(request, "O lote selecionado não pertence ao seu estabelecimento.")
-                    return redirect('saida_estoque')
+                    lote = item.lote
+                    medicamento = item.medicamento
 
-                # Verificar se há quantidade suficiente no lote
-                if lote.quantidade < saida.quantidade:
-                    messages.error(request, "Quantidade insuficiente no lote selecionado.")
-                    return redirect('saida_estoque')
-
-                # Atualizar a quantidade no lote
-                lote.quantidade -= saida.quantidade
-                lote.save()
-
-                # Atualizar o estoque geral do estabelecimento
-                try:
-                    estoque = Estoque.objects.get(
-                        estabelecimento=request.user.profile.estabelecimento,
-                        medicamento=saida.medicamento,
-                    )
-                    if estoque.quantidade < saida.quantidade:
-                        messages.error(request, "Estoque insuficiente no estabelecimento.")
+                    # Verificações
+                    if lote.estabelecimento != request.user.profile.estabelecimento:
+                        messages.error(request, f"Lote {lote.codigo} não pertence ao seu estabelecimento.")
                         return redirect('saida_estoque')
 
-                    estoque.quantidade -= saida.quantidade
-                    estoque.save()
-                except Estoque.DoesNotExist:
-                    messages.error(request, "Estoque não encontrado para este medicamento no estabelecimento.")
-                    return redirect('saida_estoque')
+                    if lote.quantidade < item.quantidade:
+                        messages.error(request, f"Quantidade insuficiente no lote {lote.codigo}.")
+                        return redirect('saida_estoque')
 
-                # Salvar a saída
-                saida.save()
+                    try:
+                        estoque = Estoque.objects.get(
+                            estabelecimento=request.user.profile.estabelecimento,
+                            medicamento=medicamento,
+                        )
+                        if estoque.quantidade < item.quantidade:
+                            messages.error(request, f"Estoque insuficiente para {medicamento}.")
+                            return redirect('saida_estoque')
+
+                        estoque.quantidade -= item.quantidade
+                        estoque.save()
+                    except Estoque.DoesNotExist:
+                        messages.error(request, f"Estoque não encontrado para {medicamento}.")
+                        return redirect('saida_estoque')
+
+                    # Atualizar lote
+                    lote.quantidade -= item.quantidade
+                    lote.save()
+
+                    item.save()
 
                 messages.success(request, "Saída registrada com sucesso!")
                 return redirect('saida_estoque')
     else:
         form = SaidaEstoqueForm(user=request.user)
+        formset = ItemSaidaFormSet(queryset=ItemSaida.objects.none())
 
-    return render(request, 'estoque/saida_estoque.html', {'form': form})
-
+    return render(request, 'estoque/saida_estoque.html', {
+        'form': form,
+        'formset': formset,
+    })
 
 
 from django.http import JsonResponse

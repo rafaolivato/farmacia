@@ -307,6 +307,15 @@ class SaidaEstoque(models.Model):
         return f'Saída {self.numero_saida} - {self.medicamento.nome} - {self.departamento.nome}'
 
 
+class ItemSaida(models.Model):
+    saida = models.ForeignKey('SaidaEstoque', on_delete=models.CASCADE, related_name='itens')
+    medicamento = models.ForeignKey('Medicamento', on_delete=models.CASCADE)
+    lote = models.ForeignKey('DetalhesMedicamento', on_delete=models.CASCADE)
+    quantidade = models.PositiveIntegerField()
+
+    def __str__(self):
+        return f"{self.medicamento.lote}"
+
 from django.db import models
 
 class Distribuicao(models.Model):

@@ -1,11 +1,30 @@
 {% extends "estoque/base.html" %}
-
+{% load crispy_forms_tags %}
+{% load static %}
 {% block content %}
 <div class="container">
     <h2 class="mt-4">Registrar Saída de Medicamento</h2>
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
+
+        <h4>Medicamentos</h4>
+        <div id="formset-container">
+            {{ formset.management_form }}
+            {% for form in formset %}
+                <div class="form-inline mb-3 formset-form">
+                    {{ form.medicamento|as_crispy_field }}
+                    {{ form.lote|as_crispy_field }}
+                    {{ form.quantidade|as_crispy_field }}
+                    {% if form.DELETE %}
+                        {{ form.DELETE }}
+                        <button type="button" class="btn btn-danger remove-form">Remover</button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" class="btn btn-secondary" id="add-form">Adicionar Medicamento</button>
         <button type="submit" class="btn btn-primary mt-2">Registrar Saída</button>
     </form>
 </div>
@@ -31,7 +50,39 @@
             loteSelect.innerHTML = '<option value="">---------</option>';
         }
     });
-    
+    document.addEventListener("DOMContentLoaded", function () {
+        const addButton = document.getElementById("add-form");
+        const formContainer = document.getElementById("formset-container");
+        const totalForms = document.querySelector("#id_form-TOTAL_FORMS");
+
+        addButton.addEventListener("click", function () {
+            const currentFormCount = parseInt(totalForms.value);
+            const newForm = formContainer.querySelector(".formset-form").cloneNode(true);
+
+            newForm.querySelectorAll("input, select").forEach(function (input) {
+                const name = input.name.replace(`form-0`, `form-${currentFormCount}`);
+                const id = input.id.replace(`form-0`, `form-${currentFormCount}`);
+                input.name = name;
+                input.id = id;
+                if (input.type !== "hidden") {
+                    input.value = "";
+                }
+            });
+
+            formContainer.appendChild(newForm);
+            totalForms.value = currentFormCount + 1;
+        });
+
+        formContainer.addEventListener("click", function (e) {
+            if (e.target.classList.contains("remove-form")) {
+                const forms = formContainer.querySelectorAll(".formset-form");
+                if (forms.length > 1) {
+                    e.target.closest(".formset-form").remove();
+                    totalForms.value = parseInt(totalForms.value) - 1;
+                }
+            }
+        });
+    });
 </script>
 
 {% endblock %}

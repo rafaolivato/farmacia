@@ -278,22 +278,14 @@ DistribuicaoMedicamentoFormSet = modelformset_factory(
     DistribuicaoMedicamento, form=DistribuicaoMedicamentoForm, extra=1
 )
 
-
-
-
-
-
 from django import forms
 from .models import SaidaEstoque, DetalhesMedicamento, Medicamento, Estoque
 
 class SaidaEstoqueForm(forms.ModelForm):
     class Meta:
         model = SaidaEstoque
-        fields = ['medicamento', 'lote', 'quantidade', 'departamento', 'observacao']
+        fields = ['departamento', 'observacao']
         widgets = {
-            'medicamento': forms.Select(attrs={'class': 'form-control', 'id': 'id_medicamento'}),
-            'lote': forms.Select(attrs={'class': 'form-control', 'id': 'id_lote'}),
-            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
             'departamento': forms.Select(attrs={'class': 'form-control'}),
             'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
@@ -322,6 +314,42 @@ class SaidaEstoqueForm(forms.ModelForm):
                 self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
         else:
             self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+
+
+from .models import ItemSaida, Medicamento, DetalhesMedicamento
+
+class ItemSaidaForm(forms.ModelForm):
+    class Meta:
+        model = ItemSaida
+        fields = ['medicamento', 'lote', 'quantidade']
+        widgets = {
+            'medicamento': forms.Select(attrs={'class': 'form-control select2'}),
+            'lote': forms.Select(attrs={'class': 'form-control select2'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user:
+            estabelecimento = user.profile.estabelecimento
+
+            # Mostrar apenas medicamentos com estoque > 0 no estabelecimento
+            medicamentos_ids = Estoque.objects.filter(
+                estabelecimento=estabelecimento,
+                quantidade__gt=0
+            ).values_list('medicamento_id', flat=True)
+
+            self.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_ids)
+
+            # Mostrar apenas lotes com estoque > 0 no estabelecimento
+            lotes_disponiveis = DetalhesMedicamento.objects.filter(
+                estabelecimento=estabelecimento,
+                quantidade__gt=0
+            )
+
+            self.fields['lote'].queryset = lotes_disponiveis
 
 from django import forms
 from django.forms import inlineformset_factory
