@@ -1,8 +1,9 @@
 {% extends "estoque/base.html" %}
 {% load crispy_forms_tags %}
 {% load static %}
+
 {% block content %}
-<div class="container">
+<div class="formset-container">
     <h2 class="mt-4">Registrar Saída de Medicamento</h2>
     <form method="post">
         {% csrf_token %}
@@ -12,14 +13,11 @@
         <div id="formset-container">
             {{ formset.management_form }}
             {% for form in formset %}
-                <div class="form-inline mb-3 formset-form">
+                <div class="form-inline mb-3 formset-item">
                     {{ form.medicamento|as_crispy_field }}
                     {{ form.lote|as_crispy_field }}
                     {{ form.quantidade|as_crispy_field }}
-                    {% if form.DELETE %}
-                        {{ form.DELETE }}
-                        <button type="button" class="btn btn-danger remove-form">Remover</button>
-                    {% endif %}
+                    <button type="button" class="btn btn-danger remove-form">Remover</button>
                 </div>
             {% endfor %}
         </div>
@@ -28,61 +26,89 @@
         <button type="submit" class="btn btn-primary mt-2">Registrar Saída</button>
     </form>
 </div>
+
 <script>
-    // Atualizar os lotes dinamicamente
-    document.getElementById("id_medicamento").addEventListener("change", function () {
-        const medicamentoId = this.value;
-        const loteSelect = document.getElementById("id_lote");
-    
-        if (medicamentoId) {
-            fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
-                .then((response) => response.json())
-                .then((data) => {
-                    loteSelect.innerHTML = '<option value="">---------</option>';
-                    data.forEach((lote) => {
-                        const option = document.createElement("option");
-                        option.value = lote.id;
-                        option.textContent = `${lote.codigo} - Quantidade: ${lote.quantidade}`;
-                        loteSelect.appendChild(option);
-                    });
-                });
-        } else {
-            loteSelect.innerHTML = '<option value="">---------</option>';
-        }
-    });
-    document.addEventListener("DOMContentLoaded", function () {
-        const addButton = document.getElementById("add-form");
-        const formContainer = document.getElementById("formset-container");
-        const totalForms = document.querySelector("#id_form-TOTAL_FORMS");
+document.addEventListener('DOMContentLoaded', function () {
+    const formsetContainer = document.getElementById('formset-container');
+    const addFormButton = document.getElementById('add-form');
+    const totalForms = document.querySelector('#id_medicamentos-TOTAL_FORMS');
 
-        addButton.addEventListener("click", function () {
-            const currentFormCount = parseInt(totalForms.value);
-            const newForm = formContainer.querySelector(".formset-form").cloneNode(true);
+    addFormButton.addEventListener('click', function () {
+        const formNum = Number(totalForms.value);
+        const firstForm = formsetContainer.querySelector('.formset-item');
+        const newForm = firstForm.cloneNode(true);
 
-            newForm.querySelectorAll("input, select").forEach(function (input) {
-                const name = input.name.replace(`form-0`, `form-${currentFormCount}`);
-                const id = input.id.replace(`form-0`, `form-${currentFormCount}`);
-                input.name = name;
-                input.id = id;
-                if (input.type !== "hidden") {
-                    input.value = "";
-                }
-            });
-
-            formContainer.appendChild(newForm);
-            totalForms.value = currentFormCount + 1;
-        });
-
-        formContainer.addEventListener("click", function (e) {
-            if (e.target.classList.contains("remove-form")) {
-                const forms = formContainer.querySelectorAll(".formset-form");
-                if (forms.length > 1) {
-                    e.target.closest(".formset-form").remove();
-                    totalForms.value = parseInt(totalForms.value) - 1;
-                }
+        // Limpa valores do novo formulário
+        newForm.querySelectorAll('input, select').forEach(input => {
+            if (input.tagName === 'SELECT') {
+                input.innerHTML = '<option value="">---------</option>';
+            } else {
+                input.value = '';
             }
         });
-    });
-</script>
 
+        // Atualiza índices
+        newForm.innerHTML = newForm.innerHTML.replace(/-\d+-/g, `-${formNum}-`);
+        newForm.innerHTML = newForm.innerHTML.replace(/_\d+_/g, `_${formNum}_`);
+
+        // Adiciona ao container
+        formsetContainer.appendChild(newForm);
+        totalForms.value = formNum + 1;
+
+        // Listener de mudança para novo select de medicamento
+        const novoSelect = newForm.querySelector('[name$="-medicamento"]');
+        if (novoSelect) {
+            novoSelect.addEventListener('change', function () {
+                atualizarLotes(this);
+            });
+        }
+    });
+
+    // Remove formulário
+    document.addEventListener('click', function (event) {
+        if (event.target.classList.contains('remove-form')) {
+            event.target.closest('.formset-item').remove();
+        }
+    });
+
+    // Inicializa listeners nos selects já existentes
+    document.querySelectorAll('[name$="-medicamento"]').forEach(select => {
+        select.addEventListener('change', function () {
+            atualizarLotes(this);
+        });
+    });
+});
+
+function atualizarLotes(select) {
+    const medicamentoId = select.value;
+    const loteField = select.closest('.formset-item').querySelector('[name$="-lote"]');
+
+    loteField.innerHTML = '<option value="">Carregando lotes...</option>';
+
+    if (!medicamentoId) {
+        loteField.innerHTML = '<option value="">---------</option>';
+        return;
+    }
+
+    fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
+        .then(response => response.json())
+        .then(data => {
+            loteField.innerHTML = '<option value="">Selecione um lote</option>';
+            if (data.length === 0 || data.message) {
+                loteField.innerHTML = '<option value="">Nenhum lote disponível</option>';
+            } else {
+                data.forEach(lote => {
+                    const option = document.createElement('option');
+                    option.value = lote.id;
+                    option.textContent = `${lote.codigo} - ${lote.quantidade} disponíveis`;
+                    loteField.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error("Erro ao carregar lotes:", error);
+            loteField.innerHTML = '<option value="">Erro ao carregar lotes</option>';
+        });
+}
+</script>
 {% endblock %}

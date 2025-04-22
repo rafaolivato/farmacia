@@ -2,6 +2,7 @@
 
 /* Importar a fonte Roboto */
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" );
 
 /* Reset e estilos gerais */
 html,
@@ -25,9 +26,9 @@ body {
 
 .navbar .navbar-brand,
 .navbar .nav-link {
-  color: #F5DD5D !important; /* Texto branco */
+  color: #f8f7f5 !important; /* Texto branco */
   font-weight: bold; /* Deixa o texto em negrito */
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Open Sans','Roboto', sans-serif;
 }
 
 .navbar .nav-link:hover {
@@ -122,7 +123,16 @@ footer {
   border-color: #1e7e34;
 }
 
+.formulario-entrada-estoque label {
+  font-weight: bold;
+  margin-bottom: 5px;
+  display: block;
+  color: #343a40;
+  font-family: 'Open Sans', sans-serif;
+  font-size: 16px;
+  margin-left: 10px;
 
+}
 
 #detalhes-medicamentos-container .detalhes-medicamento-form {
   margin-bottom: 20px;

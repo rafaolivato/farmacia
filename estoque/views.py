@@ -567,15 +567,23 @@ from .models import DetalhesMedicamento, Estoque, ItemSaida
 from django.utils.timezone import now
 from django.db import transaction
 from django.forms import modelformset_factory
+from .forms import BaseItemSaidaFormSet
 
 @login_required
 def saida_estoque(request):
-    
-    ItemSaidaFormSet = modelformset_factory(ItemSaida, form=ItemSaidaForm, extra=1, can_delete=True)
+    user_estabelecimento = request.user.profile.estabelecimento
+
+    ItemSaidaFormSet = modelformset_factory(
+        ItemSaida, form=ItemSaidaForm, formset=BaseItemSaidaFormSet, extra=1, can_delete=True
+    )
 
     if request.method == 'POST':
         form = SaidaEstoqueForm(request.POST, user=request.user)
-        formset = ItemSaidaFormSet(request.POST, queryset=ItemSaida.objects.none())
+        formset = ItemSaidaFormSet(
+            request.POST,
+            queryset=ItemSaida.objects.none(),
+            form_kwargs={'user': request.user}
+        )
 
         if form.is_valid() and formset.is_valid():
             with transaction.atomic():
@@ -584,6 +592,8 @@ def saida_estoque(request):
                 saida.user = request.user.username
                 saida.save()
 
+                total_quantidade = 0  # 👉 Acumulador de quantidade total
+
                 for item_form in formset:
                     item = item_form.save(commit=False)
                     item.saida = saida
@@ -591,8 +601,7 @@ def saida_estoque(request):
                     lote = item.lote
                     medicamento = item.medicamento
 
-                    # Verificações
-                    if lote.estabelecimento != request.user.profile.estabelecimento:
+                    if lote.estabelecimento != user_estabelecimento:
                         messages.error(request, f"Lote {lote.codigo} não pertence ao seu estabelecimento.")
                         return redirect('saida_estoque')
 
@@ -602,7 +611,7 @@ def saida_estoque(request):
 
                     try:
                         estoque = Estoque.objects.get(
-                            estabelecimento=request.user.profile.estabelecimento,
+                            estabelecimento=user_estabelecimento,
                             medicamento=medicamento,
                         )
                         if estoque.quantidade < item.quantidade:
@@ -615,17 +624,24 @@ def saida_estoque(request):
                         messages.error(request, f"Estoque não encontrado para {medicamento}.")
                         return redirect('saida_estoque')
 
-                    # Atualizar lote
                     lote.quantidade -= item.quantidade
                     lote.save()
-
                     item.save()
+
+                    total_quantidade += item.quantidade  # 👉 Soma a quantidade deste item
+
+                saida.quantidade = total_quantidade  # 👉 Salva no model
+                saida.save()  # 👉 Salva novamente agora com a quantidade total
 
                 messages.success(request, "Saída registrada com sucesso!")
                 return redirect('saida_estoque')
+
     else:
         form = SaidaEstoqueForm(user=request.user)
-        formset = ItemSaidaFormSet(queryset=ItemSaida.objects.none())
+        formset = ItemSaidaFormSet(
+            queryset=ItemSaida.objects.none(),
+            form_kwargs={'user': request.user}
+        )
 
     return render(request, 'estoque/saida_estoque.html', {
         'form': form,

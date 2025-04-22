@@ -279,77 +279,82 @@ DistribuicaoMedicamentoFormSet = modelformset_factory(
 )
 
 from django import forms
-from .models import SaidaEstoque, DetalhesMedicamento, Medicamento, Estoque
+from .models import SaidaEstoque, DetalhesMedicamento, Medicamento, Estoque, Estabelecimento
 
 class SaidaEstoqueForm(forms.ModelForm):
     class Meta:
         model = SaidaEstoque
-        fields = ['departamento', 'observacao']
-        widgets = {
-            'departamento': forms.Select(attrs={'class': 'form-control'}),
-            'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-        }
+        fields = ['departamento']  # ou outros campos gerais
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-    
-        if user:
-            estabelecimento = user.profile.estabelecimento
-            self.fields['medicamento'].queryset = Medicamento.objects.filter(
-                estoques_medicamento__estabelecimento=estabelecimento,
-                estoques_medicamento__quantidade__gt=0  # Filtra apenas os medicamentos com estoque > 0
-            ).distinct()
-
-    # Se o medicamento já está selecionado, carregue os lotes correspondentes
-        if 'medicamento' in self.data:
-            try:
-                medicamento_id = int(self.data.get('medicamento'))
-                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
-                    medicamento_id=medicamento_id,
-                    estabelecimento=estabelecimento,
-                    quantidade__gt=0  # Filtra apenas os lotes com estoque > 0
-                )
-            except (ValueError, TypeError):
-                self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
-        else:
-            self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+        super().__init__(*args, **kwargs)   
+      
 
 
-from .models import ItemSaida, Medicamento, DetalhesMedicamento
+from .models import ItemSaida, Medicamento, DetalhesMedicamento, Estoque
 
 class ItemSaidaForm(forms.ModelForm):
     class Meta:
         model = ItemSaida
         fields = ['medicamento', 'lote', 'quantidade']
-        widgets = {
-            'medicamento': forms.Select(attrs={'class': 'form-control select2'}),
-            'lote': forms.Select(attrs={'class': 'form-control select2'}),
-            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
-        }
 
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        if user:
-            estabelecimento = user.profile.estabelecimento
+        estabelecimento = None
+        if self.user:
+            estabelecimento = self.user.profile.estabelecimento
+            self.fields['medicamento'].queryset = Medicamento.objects.filter(
+                estoque__estabelecimento=estabelecimento
+            ).distinct()
 
-            # Mostrar apenas medicamentos com estoque > 0 no estabelecimento
-            medicamentos_ids = Estoque.objects.filter(
-                estabelecimento=estabelecimento,
-                quantidade__gt=0
-            ).values_list('medicamento_id', flat=True)
-
-            self.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_ids)
-
-            # Mostrar apenas lotes com estoque > 0 no estabelecimento
-            lotes_disponiveis = DetalhesMedicamento.objects.filter(
-                estabelecimento=estabelecimento,
-                quantidade__gt=0
+            self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
+                estabelecimento=estabelecimento
             )
 
-            self.fields['lote'].queryset = lotes_disponiveis
+        # NÃO sobrescreva os querysets filtrados aqui:
+        # self.fields['medicamento'].queryset = Medicamento.objects.all()
+        # self.fields['lote'].queryset = DetalhesMedicamento.objects.none()
+
+        if 'medicamento' in self.data and estabelecimento:
+            try:
+                medicamento_id = int(self.data.get('medicamento'))
+                self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
+                    medicamento_id=medicamento_id,
+                    estabelecimento=estabelecimento
+                )
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk and estabelecimento:
+            self.fields['lote'].queryset = DetalhesMedicamento.objects.filter(
+                medicamento=self.instance.medicamento,
+                estabelecimento=estabelecimento
+            )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        medicamento = cleaned_data.get('medicamento')
+        lote = cleaned_data.get('lote')
+
+        if medicamento and lote and lote.medicamento != medicamento:
+            raise forms.ValidationError("O lote selecionado não pertence ao medicamento escolhido.")
+
+
+    
+
+from django.forms import BaseModelFormSet
+
+class BaseItemSaidaFormSet(BaseModelFormSet):
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+    def _construct_form(self, i, **kwargs):
+        kwargs['user'] = self.user
+        return super()._construct_form(i, **kwargs)
+
 
 from django import forms
 from django.forms import inlineformset_factory

@@ -12,7 +12,7 @@
             {% endfor %}
         </ul>
     {% endif %}
-
+    <div class="formulario-entrada-estoque">
     <form method="post">
         {% csrf_token %}
         {{ form.as_p }}
@@ -24,6 +24,7 @@
                 </div>
             {% endfor %}
         </div>
+    </div>
         <button type="button" class="btn btn-secondary" id="add-medicamento">Adicionar Medicamento</button>
         <button type="submit" class="btn btn-primary">Salvar</button>
     </form>
