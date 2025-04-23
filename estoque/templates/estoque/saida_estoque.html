@@ -4,11 +4,14 @@
 
 {% block content %}
 <div class="formset-container">
+   
     <h2 class="mt-4">Registrar Saída de Medicamento</h2>
     <form method="post">
+    <div class="form-inline mb-3 formset-item">
+
         {% csrf_token %}
         {{ form.as_p }}
-
+    </div>
         <h4>Medicamentos</h4>
         <div id="formset-container">
             {{ formset.management_form }}
@@ -17,6 +20,7 @@
                     {{ form.medicamento|as_crispy_field }}
                     {{ form.lote|as_crispy_field }}
                     {{ form.quantidade|as_crispy_field }}
+       
                     <button type="button" class="btn btn-danger remove-form">Remover</button>
                 </div>
             {% endfor %}
@@ -28,56 +32,65 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const formsetContainer = document.getElementById('formset-container');
-    const addFormButton = document.getElementById('add-form');
-    const totalForms = document.querySelector('#id_medicamentos-TOTAL_FORMS');
-
-    addFormButton.addEventListener('click', function () {
-        const formNum = Number(totalForms.value);
-        const firstForm = formsetContainer.querySelector('.formset-item');
-        const newForm = firstForm.cloneNode(true);
-
-        // Limpa valores do novo formulário
-        newForm.querySelectorAll('input, select').forEach(input => {
-            if (input.tagName === 'SELECT') {
-                input.innerHTML = '<option value="">---------</option>';
-            } else {
-                input.value = '';
-            }
-        });
-
-        // Atualiza índices
-        newForm.innerHTML = newForm.innerHTML.replace(/-\d+-/g, `-${formNum}-`);
-        newForm.innerHTML = newForm.innerHTML.replace(/_\d+_/g, `_${formNum}_`);
-
-        // Adiciona ao container
-        formsetContainer.appendChild(newForm);
-        totalForms.value = formNum + 1;
-
-        // Listener de mudança para novo select de medicamento
-        const novoSelect = newForm.querySelector('[name$="-medicamento"]');
-        if (novoSelect) {
-            novoSelect.addEventListener('change', function () {
-                atualizarLotes(this);
+    
+        document.addEventListener('DOMContentLoaded', function () {
+            const formsetContainer = document.getElementById('formset-container');
+            const addFormButton = document.getElementById('add-form');
+            const totalForms = document.querySelector('#id_medicamentos-TOTAL_FORMS');
+        
+            addFormButton.addEventListener('click', function () {
+                const formNum = Number(totalForms.value);
+                const formRegex = new RegExp(`medicamentos-(\\d+)-`, 'g');
+        
+                const firstForm = formsetContainer.querySelector('.formset-item');
+                const newForm = firstForm.cloneNode(true);
+        
+                // Atualiza todos os atributos name, id e for
+                newForm.querySelectorAll('input, select, label').forEach(el => {
+                    if (el.name) el.name = el.name.replace(formRegex, `medicamentos-${formNum}-`);
+                    if (el.id) el.id = el.id.replace(formRegex, `medicamentos-${formNum}-`);
+                    if (el.getAttribute('for')) el.setAttribute('for', el.getAttribute('for').replace(formRegex, `medicamentos-${formNum}-`));
+                });
+        
+                // Limpa os valores dos campos (inclusive selects)
+                newForm.querySelectorAll('input').forEach(input => input.value = '');
+                newForm.querySelectorAll('select').forEach(select => {
+                    select.selectedIndex = 0;
+                });
+        
+                // Adiciona ao container
+                formsetContainer.appendChild(newForm);
+                totalForms.value = formNum + 1;
+        
+                // Reanexa listener ao novo select de medicamento
+                const novoSelect = newForm.querySelector('[name$="-medicamento"]');
+                if (novoSelect) {
+                    novoSelect.addEventListener('change', function () {
+                        atualizarLotes(this);
+                    });
+                }
+        
+                // Reanexa listener ao botão remover
+                newForm.querySelector('.remove-form').addEventListener('click', function () {
+                    this.closest('.formset-item').remove();
+                });
             });
-        }
-    });
-
-    // Remove formulário
-    document.addEventListener('click', function (event) {
-        if (event.target.classList.contains('remove-form')) {
-            event.target.closest('.formset-item').remove();
-        }
-    });
-
-    // Inicializa listeners nos selects já existentes
-    document.querySelectorAll('[name$="-medicamento"]').forEach(select => {
-        select.addEventListener('change', function () {
-            atualizarLotes(this);
+        
+            // Listeners de mudança nos selects e botão remover (inicial)
+            document.querySelectorAll('[name$="-medicamento"]').forEach(select => {
+                select.addEventListener('change', function () {
+                    atualizarLotes(this);
+                });
+            });
+        
+            document.querySelectorAll('.remove-form').forEach(button => {
+                button.addEventListener('click', function () {
+                    this.closest('.formset-item').remove();
+                });
+            });
         });
-    });
-});
+      
+        
 
 function atualizarLotes(select) {
     const medicamentoId = select.value;

@@ -274,37 +274,27 @@ from django.db import models, transaction
 from django.db.models import F
 from django.utils.timezone import now
 
-
-    
-  # Define automaticamente como o horário atual
-
-
-
 class SaidaEstoque(models.Model):
     STATUS_CHOICES = (
         ("INICIAL", "Inicial"),
         ("ATENDIDO", "Atendido"),
     )
 
-    # Usaremos um UUID para garantir que o numero_saida seja único e gerado automaticamente
-    numero_saida = models.CharField(max_length=36, unique=True, blank=True)  # Aumentado para suportar o UUID
+    numero_saida = models.CharField(max_length=36, unique=True, blank=True)
     user = models.CharField(max_length=100)
     observacao = models.TextField(blank=True, null=True, verbose_name="Observação")
     data_atendimento = models.DateTimeField(default=now)
     departamento = models.ForeignKey('Departamento', on_delete=models.CASCADE)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="INICIAL")
-    medicamento = models.ForeignKey('Medicamento', on_delete=models.CASCADE)
-    lote = models.ForeignKey('DetalhesMedicamento', on_delete=models.CASCADE)
-    quantidade = models.PositiveIntegerField()
 
     def save(self, *args, **kwargs):
-        # Gerar o número de saída usando UUID, caso ainda não tenha sido gerado
         if not self.numero_saida:
-            self.numero_saida = str(uuid.uuid4())  # Gera um UUID único
-        super(SaidaEstoque, self).save(*args, **kwargs)
+            self.numero_saida = str(uuid.uuid4())
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f'Saída {self.numero_saida} - {self.medicamento.nome} - {self.departamento.nome}'
+        return f'Saída {self.numero_saida} - {self.departamento.nome}'
+
 
 
 class ItemSaida(models.Model):

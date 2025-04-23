@@ -278,19 +278,27 @@ DistribuicaoMedicamentoFormSet = modelformset_factory(
     DistribuicaoMedicamento, form=DistribuicaoMedicamentoForm, extra=1
 )
 
-from django import forms
-from .models import SaidaEstoque, DetalhesMedicamento, Medicamento, Estoque, Estabelecimento
-
 class SaidaEstoqueForm(forms.ModelForm):
     class Meta:
         model = SaidaEstoque
-        fields = ['departamento']  # ou outros campos gerais
+        fields = ['departamento', 'observacao']
+        widgets = {
+            'departamento': forms.Select(attrs={'class': 'form-control select2'}),
+            'observacao': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)   
-      
+        super().__init__(*args, **kwargs)
 
+        # Caso queira ajustar algo baseado no user, como filtrar departamentos:
+        # if user:
+        #     self.fields['departamento'].queryset = Departamento.objects.filter(...)
+
+        # Garante que os campos tenham classe "form-control" se não estiver usando widgets no Meta
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
+      
 
 from .models import ItemSaida, Medicamento, DetalhesMedicamento, Estoque
 
@@ -300,10 +308,22 @@ class ItemSaidaForm(forms.ModelForm):
         fields = ['medicamento', 'lote', 'quantidade']
 
     def __init__(self, *args, **kwargs):
+        estabelecimento = kwargs.pop('estabelecimento', None)
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        
+        if estabelecimento:
+            # Filtra os medicamentos com estoque > 0 para esse estabelecimento
+            medicamentos_com_estoque = Medicamento.objects.filter(
+                detalhesmedicamento__quantidade__gt=0,
+                detalhesmedicamento__estoque__estabelecimento=estabelecimento
+            ).distinct()
+            self.fields['medicamento'].queryset = medicamentos_com_estoque
+        else:
+            # Se não tiver estabelecimento, mostra todos mesmo
+            self.fields['medicamento'].queryset = Medicamento.objects.none()
 
-        estabelecimento = None
+            estabelecimento = None
         if self.user:
             estabelecimento = self.user.profile.estabelecimento
             self.fields['medicamento'].queryset = Medicamento.objects.filter(
@@ -341,8 +361,7 @@ class ItemSaidaForm(forms.ModelForm):
         if medicamento and lote and lote.medicamento != medicamento:
             raise forms.ValidationError("O lote selecionado não pertence ao medicamento escolhido.")
 
-
-    
+ 
 
 from django.forms import BaseModelFormSet
 

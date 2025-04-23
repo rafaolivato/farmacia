@@ -563,7 +563,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import SaidaEstoqueForm, ItemRequisicaoForm, ItemSaidaForm
-from .models import DetalhesMedicamento, Estoque, ItemSaida
+from .models import DetalhesMedicamento, Estoque, ItemSaida, Estabelecimento
 from django.utils.timezone import now
 from django.db import transaction
 from django.forms import modelformset_factory
@@ -582,8 +582,12 @@ def saida_estoque(request):
         formset = ItemSaidaFormSet(
             request.POST,
             queryset=ItemSaida.objects.none(),
-            form_kwargs={'user': request.user}
-        )
+            prefix='medicamentos',
+            form_kwargs={
+                'user': request.user,
+                'estabelecimento': user_estabelecimento,
+     }
+)
 
         if form.is_valid() and formset.is_valid():
             with transaction.atomic():
@@ -591,13 +595,12 @@ def saida_estoque(request):
                 saida.data_atendimento = now()
                 saida.user = request.user.username
                 saida.save()
-
+                
                 total_quantidade = 0  # 👉 Acumulador de quantidade total
 
                 for item_form in formset:
                     item = item_form.save(commit=False)
                     item.saida = saida
-
                     lote = item.lote
                     medicamento = item.medicamento
 
@@ -631,7 +634,7 @@ def saida_estoque(request):
                     total_quantidade += item.quantidade  # 👉 Soma a quantidade deste item
 
                 saida.quantidade = total_quantidade  # 👉 Salva no model
-                saida.save()  # 👉 Salva novamente agora com a quantidade total
+                saida.save()  # 
 
                 messages.success(request, "Saída registrada com sucesso!")
                 return redirect('saida_estoque')
@@ -640,8 +643,13 @@ def saida_estoque(request):
         form = SaidaEstoqueForm(user=request.user)
         formset = ItemSaidaFormSet(
             queryset=ItemSaida.objects.none(),
-            form_kwargs={'user': request.user}
-        )
+            prefix='medicamentos',
+            form_kwargs={
+                'user': request.user,
+                'estabelecimento': user_estabelecimento,
+    }
+)
+
 
     return render(request, 'estoque/saida_estoque.html', {
         'form': form,
