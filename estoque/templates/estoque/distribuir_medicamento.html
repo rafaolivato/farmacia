@@ -1,69 +1,113 @@
 {% extends 'estoque/base.html' %}
-
 {% block content %}
 <div class="container">
     <h2>Distribuir Medicamentos</h2>
+  
     <form method="POST">
         {% csrf_token %}
-               
-        <div class="form-group">
-            {{ form.estabelecimento_destino }}
-        </div>
-
-        <h4>Medicamentos</h4>
+        
+        {{ form.estabelecimento_destino }}
+        {{ formset.management_form }}
+    
         <div id="formset-container">
-            {{ formset.management_form }}
             {% for form in formset %}
-                <div class="formset-item">
-                    {{ form.as_p }}
-                    <button type="button" class="btn btn-danger remove-form">Remover</button>
+            <div class="formset-item row align-items-end mb-3">
+                <div class="col-md-4">
+                    {{ form.medicamento.label_tag }} {{ form.medicamento }}
                 </div>
+                <div class="col-md-4">
+                    {{ form.lote.label_tag }} {{ form.lote }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.quantidade.label_tag }} {{ form.quantidade }}
+                </div>
+                <div class="col-md-1" >
+                    <button type="button" class="btn btn-danger remove-form">✖</button>
+                </div>
+            </div>
+            
             {% endfor %}
         </div>
-        
+    
         <button type="button" id="add-form" class="btn btn-secondary">Adicionar Medicamento</button>
         <button type="submit" class="btn btn-primary">Transferir</button>
     </form>
+    
 </div>
 
 <script>
-// Script para adicionar/remover formulários dinamicamente no formset
-document.addEventListener('DOMContentLoaded', function () {
-    let formsetContainer = document.getElementById('formset-container');
-    let addFormButton = document.getElementById('add-form');
-    let totalForms = document.querySelector('#id_medicamentos-TOTAL_FORMS');
-
-    addFormButton.addEventListener('click', function () {
-        let formNum = Number(totalForms.value);
-        let newForm = formsetContainer.firstElementChild.cloneNode(true);
-        newForm.innerHTML = newForm.innerHTML.replace(/-0-/g, `-${formNum}-`);
-        formsetContainer.appendChild(newForm);
-        totalForms.value = formNum + 1;
-    });
-
-    document.addEventListener('click', function (event) {
-        if (event.target.classList.contains('remove-form')) {
-            event.target.closest('.formset-item').remove();
-        }
-    });
-});
-
-function atualizarLotes(select) {
-    let medicamentoId = select.value;
-    let loteField = select.closest('.formset-item').querySelector('[name$="-lote"]');
+    document.addEventListener('DOMContentLoaded', function () {
+        const formsetContainer = document.getElementById('formset-container');
+        const addFormButton = document.getElementById('add-form');
+        const totalForms = document.querySelector('#id_medicamentos-TOTAL_FORMS');
     
-    fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
-        .then(response => response.json())
-        .then(data => {
-            loteField.innerHTML = '<option value="">Selecione um lote</option>';
-            data.forEach(lote => {
-                let option = document.createElement('option');
-                option.value = lote.id;
-                option.textContent = `${lote.codigo} - ${lote.quantidade} disponíveis`;
-                loteField.appendChild(option);
+        const emptyForm = formsetContainer.querySelector('.formset-item').cloneNode(true);
+        emptyForm.querySelectorAll('input').forEach(input => input.value = '');
+        emptyForm.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+    
+        addFormButton.addEventListener('click', function () {
+            const formNum = Number(totalForms.value);
+            const formRegex = new RegExp(`medicamentos-(\\d+)-`, 'g');
+
+            const newForm = emptyForm.cloneNode(true);
+    
+            newForm.innerHTML = newForm.innerHTML.replace(formRegex, `medicamentos-${formNum}-`);
+            newForm.querySelectorAll('[name$="-medicamento"]').forEach(select => {
+                select.addEventListener('change', function () {
+                    atualizarLotes(this);
+                });
+            });
+    
+            newForm.querySelector('.remove-form').addEventListener('click', function () {
+                this.closest('.formset-item').remove();
+                atualizarTotalForms();
+            });
+    
+            formsetContainer.appendChild(newForm);
+            totalForms.value = formNum + 1;
+        });
+    
+        function atualizarTotalForms() {
+            const total = formsetContainer.querySelectorAll('.formset-item').length;
+            totalForms.value = total;
+        }
+    
+        // Adiciona o listener para medicamentos já existentes
+        document.querySelectorAll('[name$="-medicamento"]').forEach(select => {
+            select.addEventListener('change', function () {
+                atualizarLotes(this);
             });
         });
-}
-</script>
-
+    
+        document.querySelectorAll('.remove-form').forEach(button => {
+            button.addEventListener('click', function () {
+                this.closest('.formset-item').remove();
+                atualizarTotalForms();
+            });
+        });
+    });
+    
+    function atualizarLotes(select) {
+        const medicamentoId = select.value;
+        const loteField = select.closest('.formset-item').querySelector('[name$="-lote"]');
+    
+        if (!medicamentoId) {
+            loteField.innerHTML = '<option value="">Selecione um lote</option>';
+            return;
+        }
+    
+        fetch(`/api/lotes_por_medicamento/${medicamentoId}/`)
+            .then(response => response.json())
+            .then(data => {
+                loteField.innerHTML = '<option value="">Selecione um lote</option>';
+                data.forEach(lote => {
+                    const option = document.createElement('option');
+                    option.value = lote.id;
+                    option.textContent = `${lote.codigo} - ${lote.quantidade} disponíveis`;
+                    loteField.appendChild(option);
+                });
+            });
+    }
+    </script>
+    
 {% endblock %}

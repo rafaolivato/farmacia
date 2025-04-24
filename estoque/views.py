@@ -676,16 +676,18 @@ from django.contrib.auth.decorators import login_required
 
 @login_required
 def distribuir_medicamento(request):
-    user_estabelecimento = request.user.profile.estabelecimento  # Obtém o estabelecimento do usuário
+    user_estabelecimento = request.user.profile.estabelecimento
 
     if request.method == 'POST':
         form = DistribuicaoForm(request.POST, user=request.user)
         formset = DistribuicaoMedicamentoFormSet(
-            request.POST, form_kwargs={'estabelecimento_origem': user_estabelecimento}
+            request.POST,
+            form_kwargs={'estabelecimento_origem': user_estabelecimento},
+            prefix='medicamentos'  # ✅ ESSENCIAL aqui também
         )
 
         if form.is_valid() and formset.is_valid():
-            with transaction.atomic():  # Garante que todas as operações sejam atômicas
+            with transaction.atomic():
                 distribuicao = form.save(commit=False)
                 distribuicao.estabelecimento_origem = user_estabelecimento
                 distribuicao.save()
@@ -694,20 +696,16 @@ def distribuir_medicamento(request):
                     medicamento = item_form.save(commit=False)
                     medicamento.distribuicao = distribuicao
                     
-                    # Verifica e atribui a validade do lote antes de salvar
                     if medicamento.lote:
                         medicamento.validade = medicamento.lote.validade
 
-                        # 🚨 Verifica se há estoque suficiente no lote
                         if medicamento.lote.quantidade < medicamento.quantidade:
                             messages.error(request, f"Estoque insuficiente para {medicamento.medicamento}.")
                             return redirect('distribuir_medicamento')
 
-                        # ✅ Atualiza a quantidade do lote
                         medicamento.lote.quantidade -= medicamento.quantidade
                         medicamento.lote.save()
 
-                        # ✅ Atualiza o estoque do estabelecimento de origem
                         try:
                             estoque_origem = Estoque.objects.get(
                                 estabelecimento=user_estabelecimento,
@@ -734,17 +732,14 @@ def distribuir_medicamento(request):
         form = DistribuicaoForm(user=request.user)
         formset = DistribuicaoMedicamentoFormSet(
             queryset=DistribuicaoMedicamento.objects.none(),
-            form_kwargs={'estabelecimento_origem': user_estabelecimento}
+            form_kwargs={'estabelecimento_origem': user_estabelecimento},
+            prefix='medicamentos'  # ✅ MANTER o prefixo no GET também
         )
 
     return render(request, 'estoque/distribuir_medicamento.html', {
         'form': form,
         'formset': formset,
     })
-
-
-
-
 
 
 from django.shortcuts import render, redirect

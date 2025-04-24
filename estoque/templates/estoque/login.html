@@ -14,14 +14,14 @@
                     <form method="post" action="{% url 'login' %}">
                         {% csrf_token %}
                         <div class="mb-3">
-                            <label for="id_username" class="form-label">Username</label>
+                            <label for="id_username" class="form-label">Nome</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-person"></i></span>
                                 <input type="text" name="username" class="form-control" id="id_username" required>
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="id_password" class="form-label">Password</label>
+                            <label for="id_password" class="form-label">Senha</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi bi-lock"></i></span>
                                 <input type="password" name="password" class="form-control" id="id_password" required>

@@ -201,10 +201,8 @@ class UploadExcelForm(forms.Form):
 
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Distribuicao, DistribuicaoMedicamento, DetalhesMedicamento, Medicamento
-
-from django import forms
-from .models import Distribuicao, Estabelecimento, Estoque
+from .models import Distribuicao, DistribuicaoMedicamento, DetalhesMedicamento, Medicamento, Estabelecimento, Estoque
+from django.db.models import Sum
 
 class DistribuicaoForm(forms.ModelForm):
     class Meta:
@@ -217,6 +215,7 @@ class DistribuicaoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)  # Obtém o usuário passado pela view
         super().__init__(*args, **kwargs)
+
 
         if user and hasattr(user, 'profile') and user.profile.estabelecimento:
             self.fields['estabelecimento_destino'].queryset = Estabelecimento.objects.exclude(
@@ -238,30 +237,26 @@ class DistribuicaoMedicamentoForm(forms.ModelForm):
 
     def __init__(self, *args, estabelecimento_origem=None, **kwargs):
         super().__init__(*args, **kwargs)
-        
+       
+
+        self.fields['medicamento'].queryset = Medicamento.objects.none() 
+       
+
         # Atribui o estabelecimento_origem se passado como argumento
         if estabelecimento_origem:
             self.fields['estabelecimento_origem'].initial = estabelecimento_origem
             self.fields['estabelecimento_origem'].widget = forms.HiddenInput()  # Deixa o campo oculto no formulário
             
-            medicamentos_com_estoque = Estoque.objects.filter(
-                estabelecimento=estabelecimento_origem
-            ).values_list('medicamento', flat=True)
-            
-            self.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_com_estoque)
-
-        def __init__(self, *args, estabelecimento_origem=None, **kwargs):
-            super().__init__(*args, **kwargs)
-        
+               
         if estabelecimento_origem:
             # Filtra os medicamentos disponíveis no estoque do estabelecimento
-            medicamentos_com_estoque = Estoque.objects.filter(
-                estabelecimento=estabelecimento_origem
-            ).values_list('medicamento', flat=True)
-            
-            self.fields['medicamento'].queryset = Medicamento.objects.filter(id__in=medicamentos_com_estoque)
-            
-            
+            medicamentos_disponiveis = Medicamento.objects.filter(
+                estoques_medicamento__estabelecimento=estabelecimento_origem
+            ).annotate(
+                total_estoque=Sum('estoques_medicamento__quantidade')
+            ).filter(total_estoque__gt=0).distinct()
+
+            self.fields['medicamento'].queryset = medicamentos_disponiveis
 
     def clean(self):
         cleaned_data = super().clean()
@@ -291,11 +286,7 @@ class SaidaEstoqueForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # Caso queira ajustar algo baseado no user, como filtrar departamentos:
-        # if user:
-        #     self.fields['departamento'].queryset = Departamento.objects.filter(...)
-
-        # Garante que os campos tenham classe "form-control" se não estiver usando widgets no Meta
+       
         for field in self.fields.values():
             field.widget.attrs.setdefault('class', 'form-control')
       
