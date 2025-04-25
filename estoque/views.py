@@ -742,6 +742,66 @@ def distribuir_medicamento(request):
     })
 
 
+@login_required
+def distribuições_recebidas(request):
+    estabelecimento = request.user.profile.estabelecimento
+    distribuições = Distribuicao.objects.filter(
+        estabelecimento_destino=estabelecimento,
+        recebido=False
+    )
+    return render(request, 'estoque/distribuicoes_recebidas.html', {
+        'distribuicoes': distribuições
+    })
+
+from django.utils import timezone
+
+@login_required
+@transaction.atomic
+def confirmar_recebimento(request, distribuicao_id):
+    estabelecimento = request.user.profile.estabelecimento
+    try:
+        distribuicao = Distribuicao.objects.select_related('estabelecimento_destino').get(id=distribuicao_id)
+
+        if distribuicao.estabelecimento_destino != estabelecimento:
+            messages.error(request, "Você não tem permissão para receber esta distribuição.")
+            return redirect('distribuicoes_recebidas')
+
+        if distribuicao.recebido:
+            messages.info(request, "Essa distribuição já foi recebida.")
+            return redirect('distribuicoes_recebidas')
+
+        for item in distribuicao.medicamentos.all():
+            estoque, criado = Estoque.objects.get_or_create(
+                estabelecimento=estabelecimento,
+                medicamento=item.medicamento,
+                lote=item.lote,
+                defaults={
+                     'quantidade': 0,
+                     'validade': item.lote.validade,
+                     'lote': item.lote.lote,  # se 'lote' é o campo de texto do DetalhesMedicamento
+
+
+                }
+            )
+
+            estoque.quantidade += item.quantidade
+            estoque.save()
+
+
+          
+
+        distribuicao.recebido = True
+        distribuicao.data_recebimento = timezone.now()
+        distribuicao.save()
+
+        messages.success(request, "Medicamentos recebidos com sucesso.")
+        return redirect('distribuicoes_recebidas')
+
+    except Distribuicao.DoesNotExist:
+        messages.error(request, "Distribuição não encontrada.")
+        return redirect('distribuicoes_recebidas')
+
+
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages

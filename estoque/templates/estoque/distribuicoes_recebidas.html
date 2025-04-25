@@ -1,0 +1,10 @@
+<h2>Distribuições pendentes</h2>
+<ul>
+  {% for d in distribuicoes %}
+    <li>
+      {{ d }} — <a href="{% url 'confirmar_recebimento' d.id %}">Confirmar recebimento</a>
+    </li>
+  {% empty %}
+    <li>Nenhuma distribuição pendente.</li>
+  {% endfor %}
+</ul>

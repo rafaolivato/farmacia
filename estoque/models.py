@@ -139,15 +139,17 @@ class EntradaEstoque(models.Model):
     def __str__(self):
         return f"{self.get_tipo_display()} de medicamentos"
     
-     
-
 class Estoque(models.Model):
     estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='estoques')
-    medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE, related_name='estoques_medicamento')  # Adicionando related_name
+    medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE, related_name='estoques_medicamento')
+    lote = models.ForeignKey('DetalhesMedicamento', on_delete=models.CASCADE, related_name='estoques')
     quantidade = models.PositiveIntegerField(default=0)
 
+    class Meta:
+        unique_together = ('estabelecimento', 'medicamento', 'lote')
+
     def __str__(self):
-        return f"{self.medicamento.nome} - {self.estabelecimento.nome} - {self.quantidade} unidades"
+        return f"{self.medicamento.nome} - {self.estabelecimento.nome} - {self.lote.lote} - {self.quantidade} unidades"
 
 
 class DetalhesMedicamento(models.Model):
@@ -307,6 +309,7 @@ class ItemSaida(models.Model):
         return f"{self.medicamento.lote}"
 
 from django.db import models
+from django.utils import timezone
 
 class Distribuicao(models.Model):
     estabelecimento_origem = models.ForeignKey(
@@ -316,6 +319,8 @@ class Distribuicao(models.Model):
         'Estabelecimento', on_delete=models.CASCADE, related_name='distribuicoes_destino'
     )
     data_atendimento = models.DateField(auto_now_add=True)
+
+    recebido = models.BooleanField(default=False)
 
     def __str__(self):
         return f'{self.estabelecimento_origem} -> {self.estabelecimento_destino} ({self.data_atendimento})'
