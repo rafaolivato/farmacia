@@ -22,10 +22,11 @@
                     <tr>
                         {% if forloop.first %}
                             <td rowspan="{{ dispensacao.medicamentos.count }}">{{ dispensacao.paciente.nome }}</td>
+                            <td rowspan="{{ dispensacao.medicamentos.count }}">{{ dispensacao.data_dispensacao }}</td>
                         {% endif %}
-                        <td>{{ dispensacao.data_dispensacao }}</td>
-                        <td>{{ item.medicamento.nome }}</td>
+                        <td>{{ item.medicamento }}</td>
                         <td>{{ item.quantidade }}</td>
+
                     </tr>
                 {% endfor %}
             {% empty %}
@@ -35,5 +36,5 @@
             {% endfor %}
         </tbody>
     </table>
-    
+</div>
 {% endblock %}

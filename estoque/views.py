@@ -273,6 +273,7 @@ def entrada_estoque(request):
                 estoque, created = Estoque.objects.get_or_create(
                     estabelecimento=entrada.estabelecimento,
                     medicamento=instance.medicamento,
+                    lote=instance.lote,
                     defaults={'quantidade': 0}
                 )
                 instance.estoque = estoque #adiciona o estoque
@@ -423,6 +424,8 @@ def nova_dispensacao(request):
                 for medicamento in medicamentos:
                     medicamento.dispensacao = dispensacao
 
+                    medicamento.save() 
+                              
                     # Buscar o estoque geral do medicamento no estabelecimento do usuário
                     try:
                         estoque = Estoque.objects.get(
@@ -509,7 +512,8 @@ def nova_dispensacao(request):
 
 def detalhes_dispensacao(request, id):
     dispensacao = Dispensacao.objects.get(id=id)
-    dispensacoes_recentes = Dispensacao.objects.order_by("-data_dispensacao")[:5]
+    dispensacoes_recentes = Dispensacao.objects.prefetch_related('medicamentos__medicamento').order_by("-data_dispensacao")[:5]
+
     context = {
         "dispensacao": dispensacao,
         "dispensacoes_recentes": dispensacoes_recentes,

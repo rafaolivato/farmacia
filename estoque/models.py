@@ -142,7 +142,7 @@ class EntradaEstoque(models.Model):
 class Estoque(models.Model):
     estabelecimento = models.ForeignKey(Estabelecimento, on_delete=models.CASCADE, related_name='estoques')
     medicamento = models.ForeignKey(Medicamento, on_delete=models.CASCADE, related_name='estoques_medicamento')
-    lote = models.ForeignKey('DetalhesMedicamento', on_delete=models.CASCADE, related_name='estoques')
+    lote = models.CharField(max_length=50)
     quantidade = models.PositiveIntegerField(default=0)
 
     class Meta:
